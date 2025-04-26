@@ -61,7 +61,9 @@ export const WorkflowSleuth = () => {
   }, [sessionId]);
 
   useEffect(() => {
-    initializeSession();
+    if (!sessionId) {
+      initializeSession();
+    }
   }, []);
 
   useEffect(() => {
@@ -218,9 +220,9 @@ export const WorkflowSleuth = () => {
   };
 
   return (
-    <div className="flex h-[80vh] max-w-6xl mx-auto gap-4">
+    <div className="flex h-[80vh] w-full mx-auto gap-4">
       <SidebarProvider>
-        <div className="w-64 border rounded-lg bg-card shadow-sm">
+        <div className="w-64 min-w-64 border rounded-lg bg-card shadow-sm">
           <ChatHistory 
             sessionId={sessionId} 
             onSelectSession={handleSelectSession} 
@@ -228,7 +230,7 @@ export const WorkflowSleuth = () => {
         </div>
       </SidebarProvider>
       <div className="flex-1 flex flex-col rounded-lg border border-border bg-card shadow-sm">
-        <div className="flex-1 overflow-y-auto space-y-4 p-4">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {messages.length === 0 && !isLoading ? (
             <div className="flex h-full items-center justify-center">
               <p className="text-muted-foreground">No messages yet.</p>

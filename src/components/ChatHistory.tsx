@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -32,52 +32,89 @@ export const ChatHistory = ({ sessionId, onSelectSession }: ChatHistoryProps) =>
   }, []);
 
   const fetchSessions = async () => {
-    const { data, error } = await supabase
-      .from('sessions')
-      .select('*')
-      .order('created_at', { ascending: false });
+    try {
+      const { data, error } = await supabase
+        .from('sessions')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-    if (error) {
+      if (error) {
+        toast({
+          title: "Error",
+          description: "Failed to load chat history",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Filter out sessions with no messages
+      const filteredSessions = await filterSessionsWithMessages(data || []);
+      setSessions(filteredSessions);
+    } catch (error) {
+      console.error("Error fetching sessions:", error);
       toast({
         title: "Error",
         description: "Failed to load chat history",
         variant: "destructive",
       });
-      return;
     }
+  };
 
-    setSessions(data || []);
+  // Only show sessions that have messages
+  const filterSessionsWithMessages = async (sessions: Session[]) => {
+    const sessionsWithMessages = [];
+    
+    for (const session of sessions) {
+      const { count, error } = await supabase
+        .from('chat_messages')
+        .select('id', { count: 'exact', head: true })
+        .eq('session_id', session.id);
+      
+      if (!error && count && count > 0) {
+        sessionsWithMessages.push(session);
+      }
+    }
+    
+    return sessionsWithMessages;
   };
 
   const deleteSession = async (id: string) => {
-    const { error } = await supabase
-      .from('sessions')
-      .delete()
-      .eq('id', id);
+    try {
+      // First delete all messages associated with this session
+      const { error: messagesError } = await supabase
+        .from('chat_messages')
+        .delete()
+        .eq('session_id', id);
 
-    if (error) {
+      if (messagesError) {
+        throw messagesError;
+      }
+
+      // Then delete the session
+      const { error } = await supabase
+        .from('sessions')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        throw error;
+      }
+
+      toast({
+        title: "Success",
+        description: "Chat deleted successfully",
+      });
+      
+      fetchSessions();
+    } catch (error) {
+      console.error("Error deleting session:", error);
       toast({
         title: "Error",
         description: "Failed to delete chat",
         variant: "destructive",
       });
-      return;
     }
-
-    toast({
-      title: "Success",
-      description: "Chat deleted successfully",
-    });
-    
-    fetchSessions();
   };
-
-  const formattedSessions = useMemo(() => {
-    return sessions.map(session => ({
-      ...session,
-      formattedDate: format(new Date(session.created_at), 'MMM d, yyyy')
-    }));
-  }, [sessions]);
 
   return (
     <Sidebar className="border-r">
@@ -86,10 +123,10 @@ export const ChatHistory = ({ sessionId, onSelectSession }: ChatHistoryProps) =>
       </SidebarHeader>
       <SidebarContent>
         <div className="p-2 space-y-2">
-          {formattedSessions.length === 0 ? (
+          {sessions.length === 0 ? (
             <p className="text-center text-muted-foreground p-4">No chat history</p>
           ) : (
-            formattedSessions.map((session) => (
+            sessions.map((session) => (
               <div 
                 key={session.id}
                 className={cn(
@@ -101,7 +138,7 @@ export const ChatHistory = ({ sessionId, onSelectSession }: ChatHistoryProps) =>
                 <div className="flex flex-col">
                   <span className="font-medium">{session.company_name}</span>
                   <span className="text-xs text-muted-foreground">
-                    {session.formattedDate}
+                    {format(new Date(session.created_at), 'MMM d, yyyy')}
                   </span>
                 </div>
                 <Button
