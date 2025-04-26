@@ -12,6 +12,60 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Function to validate if all required workflow fields are present
+function validateWorkflowData(data: any): boolean {
+  // Check if all required fields are present and have valid values
+  return (
+    data.title && 
+    data.start_event && 
+    data.end_event && 
+    Array.isArray(data.people) && 
+    Array.isArray(data.systems) && 
+    data.pain_point !== undefined && 
+    data.pain_point !== null
+  );
+}
+
+// Helper function to format workflow data for OpenAI function calls
+function formatWorkflowParameters() {
+  return {
+    name: "add_workflow",
+    description: "Add a new workflow to the database",
+    parameters: {
+      type: "object",
+      properties: {
+        title: {
+          type: "string",
+          description: "Short label for the workflow"
+        },
+        start_event: {
+          type: "string",
+          description: "The exact trigger that starts the workflow"
+        },
+        end_event: {
+          type: "string",
+          description: "What marks the workflow as finished"
+        },
+        people: {
+          type: "array",
+          items: { type: "string" },
+          description: "Array of distinct roles or job titles mentioned"
+        },
+        systems: {
+          type: "array",
+          items: { type: "string" },
+          description: "Array of software or artifacts involved"
+        },
+        pain_point: {
+          type: "string",
+          description: "Single sentence describing friction if revealed"
+        }
+      },
+      required: ["title", "start_event", "end_event", "people", "systems", "pain_point"]
+    }
+  };
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -190,46 +244,6 @@ When the user types "DONE" after being asked if they want to document another wo
       }))
     ];
 
-    // Add functions for OpenAI to call
-    const functions = [
-      {
-        name: "add_workflow",
-        description: "Add a new workflow to the database",
-        parameters: {
-          type: "object",
-          properties: {
-            title: {
-              type: "string",
-              description: "Short label for the workflow"
-            },
-            start_event: {
-              type: "string",
-              description: "The exact trigger that starts the workflow"
-            },
-            end_event: {
-              type: "string",
-              description: "What marks the workflow as finished"
-            },
-            people: {
-              type: "array",
-              items: { type: "string" },
-              description: "Array of distinct roles or job titles mentioned"
-            },
-            systems: {
-              type: "array",
-              items: { type: "string" },
-              description: "Array of software or artifacts involved"
-            },
-            pain_point: {
-              type: "string",
-              description: "Single sentence describing friction if revealed"
-            }
-          },
-          required: ["title", "start_event", "end_event"]
-        }
-      }
-    ];
-
     // Call OpenAI API
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -240,7 +254,7 @@ When the user types "DONE" after being asked if they want to document another wo
       body: JSON.stringify({
         model: "gpt-4.1",
         messages: conversationHistory,
-        functions: functions,
+        functions: [formatWorkflowParameters()],
         function_call: "auto",
         temperature: 0.2,
       }),
@@ -256,6 +270,17 @@ When the user types "DONE" after being asked if they want to document another wo
       // Parse the function arguments
       const functionArgs = JSON.parse(responseMessage.function_call.arguments);
       
+      // Validate the workflow data before saving
+      if (!validateWorkflowData(functionArgs)) {
+        console.error("Invalid workflow data:", functionArgs);
+        return new Response(JSON.stringify({ 
+          reply: "I don't have enough information to save this workflow yet. Let me ask a few more questions to ensure we capture all the necessary details.",
+          addedWorkflow: null
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
       console.log("Adding workflow:", functionArgs);
 
       // Insert the workflow into the database
