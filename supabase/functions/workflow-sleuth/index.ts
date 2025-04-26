@@ -301,7 +301,7 @@ When the user types "DONE" after being asked if they want to document another wo
 
       if (error) {
         console.error("Error inserting workflow:", error);
-        throw new Error(`Failed to add workflow: ${error.message}`);
+        throw new Error(`Failed to save the workflow: ${error.message}`);
       }
 
       // Count existing workflows for this session
@@ -314,8 +314,8 @@ When the user types "DONE" after being asked if they want to document another wo
         console.error("Error counting workflows:", countError);
       }
 
-      // Prepare a response to the user about the added workflow
-      const confirmation = `I've captured the "${functionArgs.title}" workflow. ${count >= 10 ? "Great—workflows captured. Ready to map and score them." : "Let's continue."}`;
+      // Prepare a confirmation message about the saved workflow
+      const confirmation = `OK, I've saved the "${functionArgs.title}" workflow to our database. ${count >= 10 ? "We've captured quite a few workflows now. Would you like to continue or are you DONE for now?" : "Shall we document another workflow, or are you DONE for now?"}`;
       
       return new Response(JSON.stringify({ 
         reply: confirmation,
@@ -335,7 +335,10 @@ When the user types "DONE" after being asked if they want to document another wo
     }
   } catch (error) {
     console.error('Error in workflow-sleuth function:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ 
+      error: error.message,
+      reply: "I encountered an error while trying to save the workflow. Let me try collecting that information again."
+    }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
