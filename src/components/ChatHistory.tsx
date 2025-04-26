@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { Trash2 } from "lucide-react";
@@ -90,52 +91,55 @@ export const ChatHistory = ({ sessionId, onSelectSession }: ChatHistoryProps) =>
   // Function to clean up abandoned empty sessions
   const cleanupEmptySessions = async () => {
     try {
-      // Get all sessions with messages (these we want to keep)
-      const { data: sessionsWithMessages, error: messagesError } = await supabase
+      // First get all session IDs
+      const { data: allSessions, error: sessionsError } = await supabase
+        .from('sessions')
+        .select('id');
+      
+      if (sessionsError) {
+        console.error("Error getting all sessions:", sessionsError);
+        return;
+      }
+      
+      if (!allSessions || allSessions.length === 0) {
+        return; // No sessions to clean up
+      }
+      
+      // Get all session IDs that have messages
+      const { data: messagesData, error: messagesError } = await supabase
         .from('chat_messages')
         .select('session_id')
-        .is('session_id', 'not.null');
-
+        .not('session_id', 'is', null);
+      
       if (messagesError) {
-        console.error("Error finding sessions with messages:", messagesError);
+        console.error("Error getting sessions with messages:", messagesError);
         return;
       }
-
-      // Extract the session IDs that have messages
-      const sessionIdsWithMessages = sessionsWithMessages
-        ? [...new Set(sessionsWithMessages.map(msg => msg.session_id))]
+      
+      // Extract unique session IDs from messages
+      const sessionIdsWithMessages = messagesData 
+        ? [...new Set(messagesData.map(msg => msg.session_id))]
         : [];
-
-      // If there are no sessions with messages, we don't need to do anything
-      if (sessionIdsWithMessages.length === 0) {
-        return;
+      
+      // Find sessions without messages
+      const emptySessionIds = allSessions
+        .map(session => session.id)
+        .filter(id => !sessionIdsWithMessages.includes(id));
+      
+      if (emptySessionIds.length === 0) {
+        return; // No empty sessions to delete
       }
-
-      // Find sessions that don't have any messages
-      const { data: emptySessions, error: findError } = await supabase
+      
+      // Delete empty sessions
+      const { error: deleteError } = await supabase
         .from('sessions')
-        .select('id')
-        .not('id', 'in', sessionIdsWithMessages);
-
-      if (findError) {
-        console.error("Error finding empty sessions:", findError);
-        return;
-      }
-
-      if (emptySessions && emptySessions.length > 0) {
-        // Delete the empty sessions
-        const emptySessionIds = emptySessions.map(session => session.id);
-        
-        const { error: deleteError } = await supabase
-          .from('sessions')
-          .delete()
-          .in('id', emptySessionIds);
-
-        if (deleteError) {
-          console.error("Error deleting empty sessions:", deleteError);
-        } else {
-          console.log(`Cleaned up ${emptySessions.length} empty sessions`);
-        }
+        .delete()
+        .in('id', emptySessionIds);
+      
+      if (deleteError) {
+        console.error("Error deleting empty sessions:", deleteError);
+      } else {
+        console.log(`Cleaned up ${emptySessionIds.length} empty sessions`);
       }
     } catch (error) {
       console.error("Error in cleanupEmptySessions:", error);
