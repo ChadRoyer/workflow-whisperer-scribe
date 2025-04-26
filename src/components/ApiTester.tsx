@@ -16,9 +16,9 @@ export const ApiTester = () => {
     setError(null);
 
     try {
+      // Fixed: Using correct parameters for supabase.functions.invoke
       const { data, error } = await supabase.functions.invoke('workflow-sleuth', {
-        method: 'GET',
-        path: '/test-openai'
+        body: { action: 'test-openai' }
       });
 
       if (error) {

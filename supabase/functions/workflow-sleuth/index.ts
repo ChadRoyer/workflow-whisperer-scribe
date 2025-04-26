@@ -1,3 +1,4 @@
+
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
@@ -17,54 +18,58 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Add a new test route to check OpenAI API connection
-  if (req.method === 'GET' && new URL(req.url).pathname === '/test-openai') {
-    try {
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${openAIApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          messages: [
-            { role: 'system', content: 'You are a helpful assistant.' },
-            { role: 'user', content: 'Say hello in a creative way.' }
-          ],
-          max_tokens: 50
-        }),
-      });
-
-      const data = await response.json();
-      
-      return new Response(JSON.stringify({
-        success: true,
-        message: data.choices[0].message.content
-      }), {
-        headers: { 
-          ...corsHeaders, 
-          'Content-Type': 'application/json' 
-        },
-        status: 200
-      });
-    } catch (error) {
-      console.error('OpenAI API Test Error:', error);
-      return new Response(JSON.stringify({
-        success: false,
-        error: error.message
-      }), {
-        headers: { 
-          ...corsHeaders, 
-          'Content-Type': 'application/json' 
-        },
-        status: 500
-      });
-    }
-  }
-
+  // Check if it's a test request for the OpenAI API
   try {
-    const { message, sessionId, messages } = await req.json();
+    const reqData = await req.json();
+    
+    // Handle test-openai action
+    if (reqData.action === 'test-openai') {
+      try {
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${openAIApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'gpt-4o-mini',
+            messages: [
+              { role: 'system', content: 'You are a helpful assistant.' },
+              { role: 'user', content: 'Say hello in a creative way.' }
+            ],
+            max_tokens: 50
+          }),
+        });
+
+        const data = await response.json();
+        
+        return new Response(JSON.stringify({
+          success: true,
+          message: data.choices[0].message.content
+        }), {
+          headers: { 
+            ...corsHeaders, 
+            'Content-Type': 'application/json' 
+          },
+          status: 200
+        });
+      } catch (error) {
+        console.error('OpenAI API Test Error:', error);
+        return new Response(JSON.stringify({
+          success: false,
+          error: error.message
+        }), {
+          headers: { 
+            ...corsHeaders, 
+            'Content-Type': 'application/json' 
+          },
+          status: 500
+        });
+      }
+    }
+
+    // Original workflow sleuth logic
+    const { message, sessionId, messages } = reqData;
     
     // Create a Supabase client for database operations
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -182,7 +187,7 @@ When either **ten workflows** are stored **or** the user types "DONE", respond:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: "gpt-4",
+        model: "gpt-4o",
         messages: conversationHistory,
         functions: functions,
         function_call: "auto",
