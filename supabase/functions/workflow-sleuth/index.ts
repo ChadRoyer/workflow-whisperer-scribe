@@ -25,6 +25,21 @@ serve(async (req) => {
     // Handle test-openai action
     if (reqData.action === 'test-openai') {
       try {
+        // First, verify we have the OpenAI API key
+        if (!openAIApiKey) {
+          console.error('OpenAI API key is not set');
+          return new Response(JSON.stringify({
+            success: false,
+            error: "OpenAI API key is not configured"
+          }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 500
+          });
+        }
+        
+        // Log the API key length for debugging (never log the full key)
+        console.log(`Using OpenAI API key (length: ${openAIApiKey.length})`);
+        
         const response = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
           headers: {
@@ -41,28 +56,39 @@ serve(async (req) => {
           }),
         });
 
-        const data = await response.json();
+        // Log the status and content type for debugging
+        console.log(`OpenAI API response status: ${response.status}`);
         
-        return new Response(JSON.stringify({
-          success: true,
-          message: data.choices[0].message.content
-        }), {
-          headers: { 
-            ...corsHeaders, 
-            'Content-Type': 'application/json' 
-          },
-          status: 200
-        });
+        const data = await response.json();
+        console.log('OpenAI API response:', JSON.stringify(data));
+        
+        // Check if the response has the expected structure
+        if (data.choices && data.choices.length > 0 && data.choices[0].message) {
+          return new Response(JSON.stringify({
+            success: true,
+            message: data.choices[0].message.content
+          }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 200
+          });
+        } else {
+          // If the response doesn't have the expected structure, return the whole response
+          return new Response(JSON.stringify({
+            success: false,
+            error: "Unexpected response format from OpenAI API",
+            rawResponse: data
+          }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 500
+          });
+        }
       } catch (error) {
         console.error('OpenAI API Test Error:', error);
         return new Response(JSON.stringify({
           success: false,
           error: error.message
         }), {
-          headers: { 
-            ...corsHeaders, 
-            'Content-Type': 'application/json' 
-          },
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 500
         });
       }

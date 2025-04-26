@@ -9,17 +9,21 @@ export const ApiTester = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [rawResponse, setRawResponse] = useState<any>(null);
 
   const testOpenAiConnection = async () => {
     setIsLoading(true);
     setResult(null);
     setError(null);
+    setRawResponse(null);
 
     try {
-      // Fixed: Using correct parameters for supabase.functions.invoke
+      console.log("Testing OpenAI connection...");
       const { data, error } = await supabase.functions.invoke('workflow-sleuth', {
         body: { action: 'test-openai' }
       });
+
+      console.log("Response received:", data);
 
       if (error) {
         throw new Error(error.message);
@@ -32,6 +36,10 @@ export const ApiTester = () => {
           description: "Successfully connected to OpenAI API!",
         });
       } else {
+        // If we got a response but success is false
+        if (data?.rawResponse) {
+          setRawResponse(data.rawResponse);
+        }
         throw new Error(data?.error || "Unknown error occurred");
       }
     } catch (err) {
@@ -76,6 +84,15 @@ export const ApiTester = () => {
           <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
             <p className="font-semibold text-red-700">Error</p>
             <p className="text-sm text-red-600">{error}</p>
+            
+            {rawResponse && (
+              <div className="mt-2">
+                <p className="text-xs font-semibold">Raw API Response:</p>
+                <pre className="text-xs overflow-auto mt-1 p-2 bg-gray-100 rounded">
+                  {JSON.stringify(rawResponse, null, 2)}
+                </pre>
+              </div>
+            )}
           </div>
         )}
       </CardContent>
