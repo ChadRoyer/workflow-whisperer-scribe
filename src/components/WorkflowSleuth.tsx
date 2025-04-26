@@ -7,6 +7,7 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { useWorkflowSession } from "@/hooks/useWorkflowSession";
 import { useWorkflowMessages } from "@/hooks/useWorkflowMessages";
 import { useSessionTitle } from "@/hooks/useSessionTitle";
+import { toast } from "@/components/ui/use-toast";
 
 export const WorkflowSleuth = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -20,7 +21,7 @@ export const WorkflowSleuth = () => {
     initialMessageSent,
   } = useWorkflowSession();
 
-  const { handleSendMessage } = useWorkflowMessages({
+  const { handleSendMessage, sendInitialMessage } = useWorkflowMessages({
     sessionId,
     messages,
     setMessages,
@@ -29,6 +30,14 @@ export const WorkflowSleuth = () => {
   });
 
   useSessionTitle(sessionId, messages);
+
+  // Force initial message when component mounts if we have a session
+  useEffect(() => {
+    if (sessionId && messages.length === 0 && !initialMessageSent.current) {
+      console.log("WorkflowSleuth component mounted - sending initial message");
+      sendInitialMessage();
+    }
+  }, [sessionId, messages.length]);
 
   const handleSelectSession = async (selectedSessionId: string) => {
     if (selectedSessionId === sessionId) return;
@@ -60,7 +69,7 @@ export const WorkflowSleuth = () => {
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {messages.length === 0 && !isLoading ? (
             <div className="flex h-full items-center justify-center">
-              <p className="text-muted-foreground">No messages yet.</p>
+              <p className="text-muted-foreground">Initializing chat...</p>
             </div>
           ) : (
             messages.map((message, index) => (
@@ -81,7 +90,7 @@ export const WorkflowSleuth = () => {
           )}
         </div>
         <div className="mt-auto p-4 border-t border-border">
-          <ChatInput onSendMessage={handleSendMessage} disabled={isLoading} />
+          <ChatInput onSendMessage={handleSendMessage} disabled={isLoading || (!sessionId)} />
         </div>
       </div>
     </div>

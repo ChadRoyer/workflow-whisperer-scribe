@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
@@ -11,7 +12,7 @@ interface Message {
 }
 
 export const useWorkflowSession = () => {
-  const { user } = useAuth();
+  const { userInfo } = useAuth();
   const [sessionId, setSessionId] = useState<string | null>(() => {
     return localStorage.getItem('workflowSleuthSessionId');
   });
@@ -24,11 +25,11 @@ export const useWorkflowSession = () => {
     if (sessionId) {
       localStorage.setItem('workflowSleuthSessionId', sessionId);
       validateAndLoadSession();
-    } else if (!hasInitialized.current) {
+    } else if (!hasInitialized.current && userInfo) {
       initializeSession();
       hasInitialized.current = true;
     }
-  }, [sessionId]);
+  }, [sessionId, userInfo]);
 
   const validateAndLoadSession = async () => {
     if (!sessionId) return;
@@ -41,6 +42,7 @@ export const useWorkflowSession = () => {
         .single();
       
       if (sessionError || !sessionData) {
+        console.log("Session not found, creating a new one");
         localStorage.removeItem('workflowSleuthSessionId');
         setSessionId(null);
         setMessages([]);
@@ -61,7 +63,9 @@ export const useWorkflowSession = () => {
       if (count && count > 0) {
         loadMessages();
       } else {
+        console.log("No messages found for this session, sending initial message");
         setMessages([]);
+        initialMessageSent.current = false;
       }
     } catch (error) {
       console.error("Error in validateAndLoadSession:", error);
@@ -92,8 +96,10 @@ export const useWorkflowSession = () => {
         }));
         setMessages(loadedMessages);
         initialMessageSent.current = true;
+        console.log("Loaded messages:", loadedMessages);
       } else {
         setMessages([]);
+        initialMessageSent.current = false;
       }
     } catch (error) {
       console.error("Error in loadMessages:", error);
@@ -102,29 +108,19 @@ export const useWorkflowSession = () => {
 
   const initializeSession = async () => {
     try {
-      if (!user) return;
-      
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('company_name')
-        .eq('id', user.id)
-        .single();
-
-      if (!profile) {
-        toast({
-          title: "Error",
-          description: "Could not find your company profile.",
-          variant: "destructive",
-        });
+      if (!userInfo) {
+        console.log("No user info available");
         return;
       }
+      
+      console.log("Initializing session with company name:", userInfo.companyName);
 
       const { data, error } = await supabase
         .from('sessions')
         .insert([
           { 
             facilitator: 'WorkflowSleuth', 
-            company_name: profile.company_name,
+            company_name: userInfo.companyName,
             finished: false
           }
         ])
@@ -142,8 +138,10 @@ export const useWorkflowSession = () => {
 
       if (data && data.length > 0) {
         const newSessionId = data[0].id;
+        console.log("Created new session with ID:", newSessionId);
         setSessionId(newSessionId);
         setMessages([]);
+        initialMessageSent.current = false;
       }
     } catch (error) {
       console.error("Error in initializeSession:", error);

@@ -1,5 +1,5 @@
 
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 
@@ -52,6 +52,7 @@ export const useWorkflowMessages = ({
         return null;
       }
 
+      console.log("Saved message:", data);
       return data;
     } catch (error) {
       console.error("Error in saveMessage:", error);
@@ -60,7 +61,17 @@ export const useWorkflowMessages = ({
   };
 
   const sendInitialMessage = async () => {
-    if (!sessionId || initialMessageSent.current) return;
+    if (!sessionId) {
+      console.error("Cannot send initial message - no sessionId");
+      return;
+    }
+    
+    if (initialMessageSent.current) {
+      console.log("Initial message already sent");
+      return;
+    }
+    
+    console.log("Sending initial message for session:", sessionId);
     
     const initialMessage = {
       text: "Hi! I'm WorkflowSleuth. We'll list key workflows and pain points so we can spot AI wins. Let's start with the first question: Where does value first ENTER the business in a typical week?",
@@ -69,16 +80,23 @@ export const useWorkflowMessages = ({
     
     const savedMessage = await saveMessage(initialMessage);
     if (savedMessage) {
+      console.log("Initial message sent successfully");
       setMessages([initialMessage]);
       initialMessageSent.current = true;
+    } else {
+      console.error("Failed to send initial message");
     }
   };
 
-  const handleSendMessage = async (message: string) => {
-    if (!initialMessageSent.current) {
-      await sendInitialMessage();
+  // Add a useEffect to check if we need to send the initial message
+  useEffect(() => {
+    if (sessionId && !initialMessageSent.current && messages.length === 0) {
+      console.log("Attempting to send initial message");
+      sendInitialMessage();
     }
+  }, [sessionId, messages.length]);
 
+  const handleSendMessage = async (message: string) => {
     if (!sessionId) {
       toast({
         title: "Error",
@@ -86,6 +104,11 @@ export const useWorkflowMessages = ({
         variant: "destructive",
       });
       return;
+    }
+
+    if (!initialMessageSent.current) {
+      console.log("Sending initial message before user message");
+      await sendInitialMessage();
     }
 
     const userMessage = { text: message, isBot: false };
@@ -96,6 +119,12 @@ export const useWorkflowMessages = ({
     setIsLoading(true);
 
     try {
+      console.log("Calling workflow-sleuth function with:", {
+        message,
+        sessionId,
+        messages: updatedMessages
+      });
+      
       const { data, error } = await supabase.functions.invoke('workflow-sleuth', {
         body: {
           message,
@@ -108,10 +137,11 @@ export const useWorkflowMessages = ({
         throw new Error(error.message);
       }
 
+      console.log("Received response from workflow-sleuth:", data);
+      
       const botMessage = { text: data.reply, isBot: true };
       const savedBotMessage = await saveMessage(botMessage);
       
-      // Fix: Convert the function to return proper Message[] type
       setMessages([...updatedMessages, botMessage]);
 
     } catch (error) {
@@ -128,7 +158,6 @@ export const useWorkflowMessages = ({
       };
       await saveMessage(errorMessage);
       
-      // Fix: Convert the function to return proper Message[] type
       setMessages([...updatedMessages, errorMessage]);
     } finally {
       setIsLoading(false);
