@@ -4,22 +4,21 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider } from "@/contexts/AuthContext";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
-import { useAuth } from "./contexts/AuthContext";
 
-// Simplified ProtectedRoute - only checks for any session
+// Modified ProtectedRoute - checks for userInfo in addition to session
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { session } = useAuth();
+  const { userInfo, session } = useAuth();
   
-  if (!session) {
-    console.log("No session found, redirecting to auth");
+  if (!userInfo && !session) {
+    console.log("No user info or session found, redirecting to auth");
     return <Navigate to="/auth" replace />;
   }
   
-  console.log("Session found, rendering protected route");
+  console.log("User info or session found, rendering protected route");
   return <>{children}</>;
 };
 

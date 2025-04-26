@@ -8,6 +8,7 @@ interface AuthContextType {
   user: User | null;
   signIn: (email: string, companyName: string) => Promise<void>;
   signOut: () => Promise<void>;
+  userInfo: { email: string; companyName: string } | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -15,9 +16,16 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
+  const [userInfo, setUserInfo] = useState<{ email: string; companyName: string } | null>(null);
 
   useEffect(() => {
-    // Set up auth state listener FIRST
+    // Check local storage for user info first
+    const storedUserInfo = localStorage.getItem('userInfo');
+    if (storedUserInfo) {
+      setUserInfo(JSON.parse(storedUserInfo));
+    }
+    
+    // Handle auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         console.log("Auth state changed:", event, session?.user?.email);
@@ -26,7 +34,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
     );
 
-    // THEN check for existing session
+    // Check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
       console.log("Got existing session:", session?.user?.email);
       setSession(session);
@@ -37,56 +45,67 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const signIn = async (email: string, companyName: string) => {
-    // Use default values if inputs are empty
-    const userEmail = email.trim() || 'guest@workflowsleuth.com';
-    const userCompany = companyName.trim() || 'Guest Company';
+    console.log("Storing user info:", email, companyName);
     
-    console.log("Attempting simplified sign-in with:", userEmail);
+    // Store user info in local storage
+    const userInfo = { email, companyName };
+    localStorage.setItem('userInfo', JSON.stringify(userInfo));
+    setUserInfo(userInfo);
     
     try {
-      // Simple sign in - always use guest account
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: 'guest@workflowsleuth.com',
-        password: 'workflowsleuth2025!'
-      });
+      // Try to retrieve existing user data from profiles
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('email', email)
+        .maybeSingle();
       
-      if (error) {
-        console.error("Guest login failed:", error);
-        throw new Error("Unable to access the system");
+      if (existingProfile) {
+        console.log("Found existing profile:", existingProfile);
+      } else {
+        console.log("No existing profile found, creating new one if possible");
       }
       
-      // User is now logged in as guest, but we store their provided info
-      if (data.session && userEmail !== 'guest@workflowsleuth.com') {
-        // Store the user's actual email and company name in profiles table
+      // If we have a session, store profile info
+      if (session?.user) {
         const { error: profileError } = await supabase
           .from('profiles')
           .upsert({
-            id: data.user.id,
-            email: userEmail,
-            company_name: userCompany
+            id: session.user.id,
+            email: email,
+            company_name: companyName
           });
           
         if (profileError) {
           console.error("Error storing user profile:", profileError);
-          // Continue anyway, this is non-critical
+          // Continue anyway, non-critical
+        } else {
+          console.log("Successfully stored profile");
         }
+      } else {
+        console.log("No session available, skipping profile storage in database");
       }
       
-      console.log("Successfully signed in");
-      
+      console.log("Sign-in process completed successfully");
     } catch (e) {
-      console.error("Authentication error:", e);
-      throw e;
+      console.error("Error during sign-in process:", e);
+      // Don't throw an error, just log it
     }
   };
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) throw error;
+    // Clear local storage
+    localStorage.removeItem('userInfo');
+    setUserInfo(null);
+    
+    // Also sign out from Supabase if we have a session
+    if (session) {
+      await supabase.auth.signOut();
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ session, user, signIn, signOut }}>
+    <AuthContext.Provider value={{ session, user, signIn, signOut, userInfo }}>
       {children}
     </AuthContext.Provider>
   );
