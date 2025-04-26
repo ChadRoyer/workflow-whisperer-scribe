@@ -18,6 +18,7 @@ export const useWorkflowSession = () => {
   });
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [initializationError, setInitializationError] = useState<string | null>(null);
   const hasInitialized = useRef(false);
   const initialMessageSent = useRef(false);
 
@@ -35,6 +36,7 @@ export const useWorkflowSession = () => {
     if (!sessionId) return;
 
     try {
+      setInitializationError(null);
       const { data: sessionData, error: sessionError } = await supabase
         .from('sessions')
         .select('id')
@@ -69,6 +71,7 @@ export const useWorkflowSession = () => {
       }
     } catch (error) {
       console.error("Error in validateAndLoadSession:", error);
+      setInitializationError("Failed to validate session");
     }
   };
 
@@ -76,6 +79,7 @@ export const useWorkflowSession = () => {
     if (!sessionId) return;
 
     try {
+      setInitializationError(null);
       const { data, error } = await supabase
         .from('chat_messages')
         .select('*')
@@ -84,6 +88,7 @@ export const useWorkflowSession = () => {
 
       if (error) {
         console.error("Error loading messages:", error);
+        setInitializationError("Failed to load messages");
         return;
       }
 
@@ -103,36 +108,68 @@ export const useWorkflowSession = () => {
       }
     } catch (error) {
       console.error("Error in loadMessages:", error);
+      setInitializationError("Failed to load messages");
     }
   };
 
   const initializeSession = async () => {
     try {
+      setInitializationError(null);
       if (!userInfo) {
         console.log("No user info available");
+        setInitializationError("No user information available");
         return;
       }
       
       console.log("Initializing session with company name:", userInfo.companyName);
 
+      // Create a guest session without needing RLS policies
+      const sessionData = {
+        facilitator: 'WorkflowSleuth', 
+        company_name: userInfo.companyName,
+        finished: false
+      };
+
+      // First try to use the existing sessions if any exist for this company
+      const { data: existingSessions, error: existingError } = await supabase
+        .from('sessions')
+        .select('id')
+        .eq('company_name', userInfo.companyName)
+        .limit(1);
+      
+      if (!existingError && existingSessions && existingSessions.length > 0) {
+        console.log("Found existing session for company:", existingSessions[0].id);
+        setSessionId(existingSessions[0].id);
+        setMessages([]);
+        initialMessageSent.current = false;
+        return;
+      }
+
+      // If no existing sessions, create a new one
       const { data, error } = await supabase
         .from('sessions')
-        .insert([
-          { 
-            facilitator: 'WorkflowSleuth', 
-            company_name: userInfo.companyName,
-            finished: false
-          }
-        ])
+        .insert([sessionData])
         .select();
 
       if (error) {
         console.error("Error creating session:", error);
-        toast({
-          title: "Error",
-          description: "Failed to initialize session. Please try again.",
-          variant: "destructive",
-        });
+        
+        // Show a more user-friendly error message
+        if (error.code === '42501') {
+          setInitializationError("Permission denied when creating session. This may be due to database security settings.");
+          toast({
+            title: "Session Creation Failed",
+            description: "We couldn't create a new chat session. You can still view existing chats.",
+            variant: "destructive",
+          });
+        } else {
+          setInitializationError("Failed to initialize session");
+          toast({
+            title: "Error",
+            description: "Failed to initialize session. Please try again.",
+            variant: "destructive",
+          });
+        }
         return;
       }
 
@@ -145,6 +182,7 @@ export const useWorkflowSession = () => {
       }
     } catch (error) {
       console.error("Error in initializeSession:", error);
+      setInitializationError("Failed to initialize session");
     }
   };
 
@@ -152,6 +190,7 @@ export const useWorkflowSession = () => {
     sessionId,
     messages,
     isLoading,
+    initializationError,
     setSessionId,
     setMessages,
     setIsLoading,

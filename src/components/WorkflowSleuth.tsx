@@ -8,6 +8,8 @@ import { useWorkflowSession } from "@/hooks/useWorkflowSession";
 import { useWorkflowMessages } from "@/hooks/useWorkflowMessages";
 import { useSessionTitle } from "@/hooks/useSessionTitle";
 import { toast } from "@/components/ui/use-toast";
+import { AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export const WorkflowSleuth = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -19,6 +21,7 @@ export const WorkflowSleuth = () => {
     setMessages,
     setIsLoading,
     initialMessageSent,
+    initializationError,
   } = useWorkflowSession();
 
   const { handleSendMessage, sendInitialMessage } = useWorkflowMessages({
@@ -37,7 +40,7 @@ export const WorkflowSleuth = () => {
       console.log("WorkflowSleuth component mounted - sending initial message");
       sendInitialMessage();
     }
-  }, [sessionId, messages.length]);
+  }, [sessionId, messages.length, sendInitialMessage]);
 
   const handleSelectSession = async (selectedSessionId: string) => {
     if (selectedSessionId === sessionId) return;
@@ -67,7 +70,15 @@ export const WorkflowSleuth = () => {
       </div>
       <div className="flex-1 flex flex-col rounded-lg border border-border bg-card shadow-sm ml-4">
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {messages.length === 0 && !isLoading ? (
+          {initializationError && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4 mr-2" />
+              <AlertDescription>
+                {initializationError}. Please try refreshing the page or contact support.
+              </AlertDescription>
+            </Alert>
+          )}
+          {messages.length === 0 && !isLoading && !initializationError ? (
             <div className="flex h-full items-center justify-center">
               <p className="text-muted-foreground">Initializing chat...</p>
             </div>
@@ -90,7 +101,10 @@ export const WorkflowSleuth = () => {
           )}
         </div>
         <div className="mt-auto p-4 border-t border-border">
-          <ChatInput onSendMessage={handleSendMessage} disabled={isLoading || (!sessionId)} />
+          <ChatInput 
+            onSendMessage={handleSendMessage} 
+            disabled={isLoading || (!sessionId) || !!initializationError} 
+          />
         </div>
       </div>
     </div>

@@ -1,5 +1,5 @@
 
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 
@@ -60,7 +60,7 @@ export const useWorkflowMessages = ({
     }
   };
 
-  const sendInitialMessage = async () => {
+  const sendInitialMessage = useCallback(async () => {
     if (!sessionId) {
       console.error("Cannot send initial message - no sessionId");
       return;
@@ -81,12 +81,25 @@ export const useWorkflowMessages = ({
     const savedMessage = await saveMessage(initialMessage);
     if (savedMessage) {
       console.log("Initial message sent successfully");
-      setMessages([initialMessage]);
+      setMessages([{
+        id: savedMessage.id,
+        text: initialMessage.text,
+        isBot: true,
+        sessionId: savedMessage.session_id
+      }]);
       initialMessageSent.current = true;
     } else {
       console.error("Failed to send initial message");
+      // Add the message to the UI anyway so the user can interact
+      setMessages([initialMessage]);
+      initialMessageSent.current = true;
+      toast({
+        title: "Warning",
+        description: "The chat is working, but messages may not be saved properly.",
+        variant: "default",
+      });
     }
-  };
+  }, [sessionId, setMessages, initialMessageSent]);
 
   // Add a useEffect to check if we need to send the initial message
   useEffect(() => {
@@ -94,7 +107,7 @@ export const useWorkflowMessages = ({
       console.log("Attempting to send initial message");
       sendInitialMessage();
     }
-  }, [sessionId, messages.length]);
+  }, [sessionId, messages.length, sendInitialMessage, initialMessageSent]);
 
   const handleSendMessage = async (message: string) => {
     if (!sessionId) {
@@ -114,7 +127,12 @@ export const useWorkflowMessages = ({
     const userMessage = { text: message, isBot: false };
     const savedUserMessage = await saveMessage(userMessage);
     
-    const updatedMessages = [...messages, userMessage];
+    // Add user message to UI even if saving fails
+    const newUserMessage = savedUserMessage ? 
+      { id: savedUserMessage.id, text: message, isBot: false, sessionId: savedUserMessage.session_id } : 
+      userMessage;
+    
+    const updatedMessages = [...messages, newUserMessage];
     setMessages(updatedMessages);
     setIsLoading(true);
 
@@ -142,7 +160,12 @@ export const useWorkflowMessages = ({
       const botMessage = { text: data.reply, isBot: true };
       const savedBotMessage = await saveMessage(botMessage);
       
-      setMessages([...updatedMessages, botMessage]);
+      // Add bot message to UI even if saving fails
+      const newBotMessage = savedBotMessage ? 
+        { id: savedBotMessage.id, text: data.reply, isBot: true, sessionId: savedBotMessage.session_id } : 
+        botMessage;
+      
+      setMessages([...updatedMessages, newBotMessage]);
 
     } catch (error) {
       console.error("Error calling edge function:", error);
