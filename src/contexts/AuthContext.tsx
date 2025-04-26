@@ -36,14 +36,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signIn = async (email: string, companyName: string) => {
     try {
-      // First try signing in - if the user exists, this will work
+      // First try to sign in
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: email,
         password: 'workflowsleuth2025!'
       });
       
-      // If sign-in fails (user doesn't exist), try to sign up
+      // If sign-in fails, try to sign up
       if (signInError) {
+        // Create new user
         const { error: signUpError } = await supabase.auth.signUp({
           email,
           password: 'workflowsleuth2025!',
@@ -52,9 +53,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           }
         });
         
-        if (signUpError) throw signUpError;
+        if (signUpError) {
+          // If both sign-in and sign-up fail, try sign-in one more time
+          // This can happen if the user exists but password changed
+          const { error: finalError } = await supabase.auth.signInWithPassword({
+            email: email,
+            password: 'workflowsleuth2025!'
+          });
+          
+          if (finalError) throw finalError;
+        }
       }
     } catch (error) {
+      console.error('Auth error:', error);
       throw error;
     }
   };

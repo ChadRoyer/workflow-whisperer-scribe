@@ -29,22 +29,15 @@ const Auth = () => {
     setErrorMessage(null);
 
     try {
-      // Sign in or sign up the user - our AuthContext handles both cases
+      // This will handle both new and returning users
       await signIn(email, companyName);
-      navigate('/');
+      // No need to navigate here as the useEffect will handle that when session updates
     } catch (error: any) {
       console.error('Auth error:', error);
-      
-      // Set a more user-friendly error message
-      if (error.message.includes('already registered')) {
-        setErrorMessage('This email is already registered. Please try signing in with your existing account.');
-      } else {
-        setErrorMessage(error.message || "An error occurred during authentication");
-      }
-      
+      setErrorMessage("There was a problem signing you in. Please try again.");
       toast({
         title: "Error",
-        description: error.message || "An error occurred during authentication",
+        description: "There was a problem signing you in. Please try again.",
         variant: "destructive",
       });
     } finally {
