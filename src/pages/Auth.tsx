@@ -5,11 +5,14 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/components/ui/use-toast';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AlertCircle } from 'lucide-react';
 
 const Auth = () => {
   const [email, setEmail] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { signIn, session } = useAuth();
   const navigate = useNavigate();
 
@@ -23,6 +26,7 @@ const Auth = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setErrorMessage(null);
 
     try {
       // Sign in or sign up the user - our AuthContext handles both cases
@@ -30,6 +34,14 @@ const Auth = () => {
       navigate('/');
     } catch (error: any) {
       console.error('Auth error:', error);
+      
+      // Set a more user-friendly error message
+      if (error.message.includes('already registered')) {
+        setErrorMessage('This email is already registered. Please try signing in with your existing account.');
+      } else {
+        setErrorMessage(error.message || "An error occurred during authentication");
+      }
+      
       toast({
         title: "Error",
         description: error.message || "An error occurred during authentication",
@@ -47,6 +59,13 @@ const Auth = () => {
           <h1 className="text-2xl font-bold">Welcome to WorkflowSleuth</h1>
           <p className="text-muted-foreground mt-2">Sign in to start your workflow analysis</p>
         </div>
+        
+        {errorMessage && (
+          <Alert variant="destructive" className="my-4">
+            <AlertCircle className="h-4 w-4 mr-2" />
+            <AlertDescription>{errorMessage}</AlertDescription>
+          </Alert>
+        )}
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
