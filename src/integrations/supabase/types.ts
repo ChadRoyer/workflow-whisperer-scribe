@@ -41,6 +41,27 @@ export type Database = {
           },
         ]
       }
+      profiles: {
+        Row: {
+          company_name: string
+          created_at: string | null
+          email: string
+          id: string
+        }
+        Insert: {
+          company_name: string
+          created_at?: string | null
+          email: string
+          id: string
+        }
+        Update: {
+          company_name?: string
+          created_at?: string | null
+          email?: string
+          id?: string
+        }
+        Relationships: []
+      }
       sessions: {
         Row: {
           company_name: string

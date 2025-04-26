@@ -1,7 +1,7 @@
-
 import { useState, useRef, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Message {
   id?: string;
@@ -11,6 +11,7 @@ interface Message {
 }
 
 export const useWorkflowSession = () => {
+  const { user } = useAuth();
   const [sessionId, setSessionId] = useState<string | null>(() => {
     return localStorage.getItem('workflowSleuthSessionId');
   });
@@ -101,12 +102,29 @@ export const useWorkflowSession = () => {
 
   const initializeSession = async () => {
     try {
+      if (!user) return;
+      
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('company_name')
+        .eq('id', user.id)
+        .single();
+
+      if (!profile) {
+        toast({
+          title: "Error",
+          description: "Could not find your company profile.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const { data, error } = await supabase
         .from('sessions')
         .insert([
           { 
             facilitator: 'WorkflowSleuth', 
-            company_name: 'Your Company',
+            company_name: profile.company_name,
             finished: false
           }
         ])
