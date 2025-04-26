@@ -213,7 +213,7 @@ When either **ten workflows** are stored **or** the user types "DONE", respond:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: "gpt-4o",
+        model: "gpt-4.1",
         messages: conversationHistory,
         functions: functions,
         function_call: "auto",
