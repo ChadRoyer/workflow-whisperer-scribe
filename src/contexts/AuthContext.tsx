@@ -35,38 +35,36 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const signIn = async (email: string, companyName: string) => {
-    try {
-      // First try to sign in
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: email,
-        password: 'workflowsleuth2025!'
-      });
-      
-      // If sign-in fails, try to sign up
-      if (signInError) {
-        // Create new user
-        const { error: signUpError } = await supabase.auth.signUp({
-          email,
-          password: 'workflowsleuth2025!',
-          options: {
-            data: { company_name: companyName }
-          }
-        });
-        
-        if (signUpError) {
-          // If both sign-in and sign-up fail, try sign-in one more time
-          // This can happen if the user exists but password changed
-          const { error: finalError } = await supabase.auth.signInWithPassword({
-            email: email,
-            password: 'workflowsleuth2025!'
-          });
-          
-          if (finalError) throw finalError;
-        }
+    // Always sign in, ignore errors as the account might not exist yet
+    await supabase.auth.signInWithPassword({
+      email: email,
+      password: 'workflowsleuth2025!'
+    }).catch(() => {
+      // Silently fail - we'll try to sign up next
+    });
+    
+    // Try to sign up - this might fail if the user already exists, which is fine
+    const { error: signUpError } = await supabase.auth.signUp({
+      email,
+      password: 'workflowsleuth2025!',
+      options: {
+        data: { company_name: companyName }
       }
-    } catch (error) {
-      console.error('Auth error:', error);
-      throw error;
+    }).catch(() => {
+      // Silently fail and continue
+      return { error: null };
+    });
+    
+    // Final attempt to sign in (this should work in all cases, either the account 
+    // existed before or was just created)
+    const { error: finalSignInError } = await supabase.auth.signInWithPassword({
+      email: email,
+      password: 'workflowsleuth2025!'
+    });
+    
+    if (finalSignInError) {
+      console.error('Final sign-in error:', finalSignInError);
+      throw new Error('Unable to sign in. Please try again later.');
     }
   };
 

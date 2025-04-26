@@ -28,10 +28,16 @@ const Auth = () => {
     setIsLoading(true);
     setErrorMessage(null);
 
+    // Basic validation
+    if (!email || !companyName) {
+      setErrorMessage("Please fill in all fields");
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      // This will handle both new and returning users
       await signIn(email, companyName);
-      // No need to navigate here as the useEffect will handle that when session updates
+      // No need to navigate - the useEffect will handle this when session updates
     } catch (error: any) {
       console.error('Auth error:', error);
       setErrorMessage("There was a problem signing you in. Please try again.");
