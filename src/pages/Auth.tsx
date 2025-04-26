@@ -1,32 +1,61 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/components/ui/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 const Auth = () => {
   const [email, setEmail] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { signIn } = useAuth();
+  const { signIn, session } = useAuth();
   const navigate = useNavigate();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (session) {
+      navigate('/');
+    }
+  }, [session, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      await signIn(email, companyName);
-      toast({
-        title: "Magic link sent!",
-        description: "Please check your email for the login link.",
+      // First check if user exists
+      const { data, error: userCheckError } = await supabase.auth.admin.listUsers({
+        filters: {
+          email: email
+        }
       });
+
+      // If user doesn't exist, sign them up first
+      if (!data?.users?.length) {
+        // Create user with password auth
+        const { error: signUpError } = await supabase.auth.signUp({
+          email,
+          password: 'workflowsleuth2025!',
+          options: {
+            data: { company_name: companyName }
+          }
+        });
+        
+        if (signUpError) throw signUpError;
+      }
+      
+      // Now sign in the user
+      await signIn(email, companyName);
+      navigate('/');
+      
     } catch (error: any) {
+      console.error('Auth error:', error);
       toast({
         title: "Error",
-        description: error.message,
+        description: error.message || "An error occurred during authentication",
         variant: "destructive",
       });
     } finally {
@@ -72,7 +101,7 @@ const Auth = () => {
             className="w-full"
             disabled={isLoading}
           >
-            {isLoading ? "Sending magic link..." : "Continue with Email"}
+            {isLoading ? "Signing in..." : "Sign In"}
           </Button>
         </form>
       </div>

@@ -35,8 +35,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const signIn = async (email: string, companyName: string) => {
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
+    // We'll use signUp to just create the user without sending any emails
+    // This creates a new user account or logs in an existing one
+    const { error, data } = await supabase.auth.signInWithPassword({
+      email: email,
+      // Using a standard password for all users, they'll be identified by email and company
+      password: 'workflowsleuth2025!', 
       options: {
         data: { company_name: companyName }
       }
