@@ -7,9 +7,6 @@ import {
   Sidebar,
   SidebarContent,
   SidebarHeader,
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
@@ -88,17 +85,20 @@ export const ChatHistory = ({ sessionId, onSelectSession }: ChatHistoryProps) =>
         <h2 className="text-lg font-semibold">Chat History</h2>
       </SidebarHeader>
       <SidebarContent>
-        <SidebarMenu>
-          {formattedSessions.map((session) => (
-            <SidebarMenuItem key={session.id}>
-              <SidebarMenuButton
-                onClick={() => onSelectSession(session.id)}
+        <div className="p-2 space-y-2">
+          {formattedSessions.length === 0 ? (
+            <p className="text-center text-muted-foreground p-4">No chat history</p>
+          ) : (
+            formattedSessions.map((session) => (
+              <div 
+                key={session.id}
                 className={cn(
-                  "w-full justify-between group",
+                  "flex justify-between items-center p-2 rounded-md hover:bg-accent cursor-pointer group",
                   sessionId === session.id && "bg-accent"
                 )}
+                onClick={() => onSelectSession(session.id)}
               >
-                <div className="flex flex-col items-start">
+                <div className="flex flex-col">
                   <span className="font-medium">{session.company_name}</span>
                   <span className="text-xs text-muted-foreground">
                     {session.formattedDate}
@@ -115,10 +115,10 @@ export const ChatHistory = ({ sessionId, onSelectSession }: ChatHistoryProps) =>
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ))}
-        </SidebarMenu>
+              </div>
+            ))
+          )}
+        </div>
       </SidebarContent>
     </Sidebar>
   );
