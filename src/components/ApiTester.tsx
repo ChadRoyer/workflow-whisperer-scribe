@@ -25,7 +25,7 @@ export const ApiTester = () => {
         body: { action: 'test-openai' }
       });
 
-      console.log("Response received:", data);
+      console.log("Full response received:", JSON.stringify(data, null, 2));
 
       if (error) {
         throw new Error(error.message);
