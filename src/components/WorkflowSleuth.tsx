@@ -1,7 +1,9 @@
+
 import { useState, useEffect, useRef } from "react";
 import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
 import { ChatHistory } from "./ChatHistory";
+import { SidebarProvider } from "@/components/ui/sidebar";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 
@@ -217,12 +219,14 @@ export const WorkflowSleuth = () => {
 
   return (
     <div className="flex h-[80vh] max-w-6xl mx-auto gap-4">
-      <div className="w-64 border rounded-lg bg-card shadow-sm">
-        <ChatHistory 
-          sessionId={sessionId} 
-          onSelectSession={handleSelectSession} 
-        />
-      </div>
+      <SidebarProvider>
+        <div className="w-64 border rounded-lg bg-card shadow-sm">
+          <ChatHistory 
+            sessionId={sessionId} 
+            onSelectSession={handleSelectSession} 
+          />
+        </div>
+      </SidebarProvider>
       <div className="flex-1 flex flex-col rounded-lg border border-border bg-card shadow-sm">
         <div className="flex-1 overflow-y-auto space-y-4 mb-4 p-4">
           {messages.map((message, index) => (
