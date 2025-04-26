@@ -111,7 +111,8 @@ export const useWorkflowMessages = ({
       const botMessage = { text: data.reply, isBot: true };
       const savedBotMessage = await saveMessage(botMessage);
       
-      setMessages(prev => [...prev, botMessage]);
+      // Fix: Convert the function to return proper Message[] type
+      setMessages([...updatedMessages, botMessage]);
 
     } catch (error) {
       console.error("Error calling edge function:", error);
@@ -127,7 +128,8 @@ export const useWorkflowMessages = ({
       };
       await saveMessage(errorMessage);
       
-      setMessages(prev => [...prev, errorMessage]);
+      // Fix: Convert the function to return proper Message[] type
+      setMessages([...updatedMessages, errorMessage]);
     } finally {
       setIsLoading(false);
     }

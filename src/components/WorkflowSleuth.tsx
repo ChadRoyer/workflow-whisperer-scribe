@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
@@ -6,7 +7,6 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { useWorkflowSession } from "@/hooks/useWorkflowSession";
 import { useWorkflowMessages } from "@/hooks/useWorkflowMessages";
 import { useSessionTitle } from "@/hooks/useSessionTitle";
-import { setIsLoading } from "next/dist/server/app-render";
 
 export const WorkflowSleuth = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
