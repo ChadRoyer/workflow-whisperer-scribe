@@ -1,7 +1,7 @@
-
 import { useState, useEffect, useRef } from "react";
 import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
+import { ChatHistory } from "./ChatHistory";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 
@@ -29,7 +29,6 @@ export const WorkflowSleuth = () => {
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Load existing messages when session changes
   useEffect(() => {
     const loadMessages = async () => {
       if (!sessionId) return;
@@ -60,12 +59,10 @@ export const WorkflowSleuth = () => {
   }, [sessionId]);
 
   useEffect(() => {
-    // Initialize session
     initializeSession();
   }, []);
 
   useEffect(() => {
-    // Scroll to bottom when messages change
     scrollToBottom();
   }, [messages]);
 
@@ -74,7 +71,6 @@ export const WorkflowSleuth = () => {
   };
 
   const initializeSession = async () => {
-    // Create a new session
     const { data, error } = await supabase
       .from('sessions')
       .insert([
@@ -100,7 +96,6 @@ export const WorkflowSleuth = () => {
       const newSessionId = data[0].id;
       setSessionId(newSessionId);
       
-      // Add initial bot message and save it
       const initialMessage = {
         text: "Hi! I'm WorkflowSleuth. We'll list key workflows and pain points so we can spot AI wins. Let's start with the first question: Where does value first ENTER the business in a typical week?",
         isBot: true
@@ -168,17 +163,14 @@ export const WorkflowSleuth = () => {
       return;
     }
 
-    // Save user message
     const userMessage = { text: message, isBot: false };
     const savedUserMessage = await saveMessage(userMessage);
     
-    // Add user message to state
     const updatedMessages = [...messages, userMessage];
     setMessages(updatedMessages);
     setIsLoading(true);
 
     try {
-      // Call the edge function
       const { data, error } = await supabase.functions.invoke('workflow-sleuth', {
         body: {
           message,
@@ -191,13 +183,11 @@ export const WorkflowSleuth = () => {
         throw new Error(error.message);
       }
 
-      // Save and add bot response
       const botMessage = { text: data.reply, isBot: true };
       const savedBotMessage = await saveMessage(botMessage);
       
       setMessages(prev => [...prev, botMessage]);
 
-      // If a workflow was added, fetch updated workflows
       if (data.addedWorkflow) {
         fetchWorkflows();
       }
@@ -209,7 +199,6 @@ export const WorkflowSleuth = () => {
         variant: "destructive",
       });
       
-      // Save error message
       const errorMessage = { 
         text: "I'm sorry, I encountered an error processing your message. Please try again.",
         isBot: true 
@@ -222,27 +211,39 @@ export const WorkflowSleuth = () => {
     }
   };
 
+  const handleSelectSession = async (selectedSessionId: string) => {
+    setSessionId(selectedSessionId);
+  };
+
   return (
-    <div className="flex flex-col h-[80vh] max-w-2xl mx-auto p-4 rounded-lg border border-border bg-card shadow-sm">
-      <div className="flex-1 overflow-y-auto space-y-4 mb-4 p-4">
-        {messages.map((message, index) => (
-          <ChatMessage
-            key={message.id || index}
-            isBot={message.isBot}
-            message={message.text}
-          />
-        ))}
-        <div ref={messagesEndRef} />
-        {isLoading && (
-          <div className="flex justify-center items-center py-4">
-            <div className="animate-pulse text-muted-foreground">
-              WorkflowSleuth is thinking...
-            </div>
-          </div>
-        )}
+    <div className="flex h-[80vh] max-w-6xl mx-auto gap-4">
+      <div className="w-64 border rounded-lg bg-card shadow-sm">
+        <ChatHistory 
+          sessionId={sessionId} 
+          onSelectSession={handleSelectSession} 
+        />
       </div>
-      <div className="mt-auto p-4 border-t border-border">
-        <ChatInput onSendMessage={handleSendMessage} disabled={isLoading} />
+      <div className="flex-1 flex flex-col rounded-lg border border-border bg-card shadow-sm">
+        <div className="flex-1 overflow-y-auto space-y-4 mb-4 p-4">
+          {messages.map((message, index) => (
+            <ChatMessage
+              key={message.id || index}
+              isBot={message.isBot}
+              message={message.text}
+            />
+          ))}
+          <div ref={messagesEndRef} />
+          {isLoading && (
+            <div className="flex justify-center items-center py-4">
+              <div className="animate-pulse text-muted-foreground">
+                WorkflowSleuth is thinking...
+              </div>
+            </div>
+          )}
+        </div>
+        <div className="mt-auto p-4 border-t border-border">
+          <ChatInput onSendMessage={handleSendMessage} disabled={isLoading} />
+        </div>
       </div>
     </div>
   );
