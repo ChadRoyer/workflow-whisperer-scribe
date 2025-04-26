@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
@@ -26,14 +27,34 @@ interface Workflow {
 export const WorkflowSleuth = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(() => {
+    // Try to retrieve sessionId from localStorage on component mount
+    return localStorage.getItem('workflowSleuthSessionId');
+  });
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const hasInitialized = useRef(false);
 
   useEffect(() => {
-    const loadMessages = async () => {
-      if (!sessionId) return;
+    if (sessionId) {
+      // Save sessionId to localStorage whenever it changes
+      localStorage.setItem('workflowSleuthSessionId', sessionId);
+      loadMessages();
+    } else if (!hasInitialized.current) {
+      // Only initialize a new session if we don't have one and haven't tried initializing yet
+      initializeSession();
+      hasInitialized.current = true;
+    }
+  }, [sessionId]);
 
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const loadMessages = async () => {
+    if (!sessionId) return;
+
+    try {
       const { data, error } = await supabase
         .from('chat_messages')
         .select('*')
@@ -45,7 +66,7 @@ export const WorkflowSleuth = () => {
         return;
       }
 
-      if (data) {
+      if (data && data.length > 0) {
         const loadedMessages = data.map(msg => ({
           id: msg.id,
           text: msg.content,
@@ -53,59 +74,69 @@ export const WorkflowSleuth = () => {
           sessionId: msg.session_id
         }));
         setMessages(loadedMessages);
+      } else {
+        // If there are no messages for this session, it might be a stale reference
+        // Check if the session exists
+        const { data: sessionData, error: sessionError } = await supabase
+          .from('sessions')
+          .select('id')
+          .eq('id', sessionId)
+          .single();
+        
+        if (sessionError || !sessionData) {
+          // Session doesn't exist, clear localStorage and state
+          localStorage.removeItem('workflowSleuthSessionId');
+          setSessionId(null);
+          setMessages([]);
+          hasInitialized.current = false; // Allow re-initialization
+        }
       }
-    };
-
-    loadMessages();
-  }, [sessionId]);
-
-  useEffect(() => {
-    if (!sessionId) {
-      initializeSession();
+    } catch (error) {
+      console.error("Error in loadMessages:", error);
     }
-  }, []);
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   const initializeSession = async () => {
-    const { data, error } = await supabase
-      .from('sessions')
-      .insert([
-        { 
-          facilitator: 'WorkflowSleuth', 
-          company_name: 'Your Company',
-          finished: false
-        }
-      ])
-      .select();
+    try {
+      const { data, error } = await supabase
+        .from('sessions')
+        .insert([
+          { 
+            facilitator: 'WorkflowSleuth', 
+            company_name: 'Your Company',
+            finished: false
+          }
+        ])
+        .select();
 
-    if (error) {
-      console.error("Error creating session:", error);
-      toast({
-        title: "Error",
-        description: "Failed to initialize session. Please try again.",
-        variant: "destructive",
-      });
-      return;
-    }
+      if (error) {
+        console.error("Error creating session:", error);
+        toast({
+          title: "Error",
+          description: "Failed to initialize session. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
 
-    if (data && data.length > 0) {
-      const newSessionId = data[0].id;
-      setSessionId(newSessionId);
-      
-      const initialMessage = {
-        text: "Hi! I'm WorkflowSleuth. We'll list key workflows and pain points so we can spot AI wins. Let's start with the first question: Where does value first ENTER the business in a typical week?",
-        isBot: true
-      };
-      
-      await saveMessage(initialMessage, newSessionId);
-      setMessages([initialMessage]);
+      if (data && data.length > 0) {
+        const newSessionId = data[0].id;
+        setSessionId(newSessionId);
+        
+        const initialMessage = {
+          text: "Hi! I'm WorkflowSleuth. We'll list key workflows and pain points so we can spot AI wins. Let's start with the first question: Where does value first ENTER the business in a typical week?",
+          isBot: true
+        };
+        
+        await saveMessage(initialMessage, newSessionId);
+        setMessages([initialMessage]);
+      }
+    } catch (error) {
+      console.error("Error in initializeSession:", error);
     }
   };
 
@@ -115,44 +146,53 @@ export const WorkflowSleuth = () => {
       return null;
     }
 
-    const { data, error } = await supabase
-      .from('chat_messages')
-      .insert({
-        session_id: currentSessionId || sessionId,
-        role: message.isBot ? 'assistant' : 'user',
-        content: message.text
-      })
-      .select()
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from('chat_messages')
+        .insert({
+          session_id: currentSessionId || sessionId,
+          role: message.isBot ? 'assistant' : 'user',
+          content: message.text
+        })
+        .select()
+        .single();
 
-    if (error) {
-      console.error("Error saving message:", error);
-      toast({
-        title: "Error",
-        description: "Failed to save message.",
-        variant: "destructive",
-      });
+      if (error) {
+        console.error("Error saving message:", error);
+        toast({
+          title: "Error",
+          description: "Failed to save message.",
+          variant: "destructive",
+        });
+        return null;
+      }
+
+      return data;
+    } catch (error) {
+      console.error("Error in saveMessage:", error);
       return null;
     }
-
-    return data;
   };
 
   const fetchWorkflows = async () => {
     if (!sessionId) return;
 
-    const { data, error } = await supabase
-      .from('workflows')
-      .select('*')
-      .eq('session_id', sessionId);
+    try {
+      const { data, error } = await supabase
+        .from('workflows')
+        .select('*')
+        .eq('session_id', sessionId);
 
-    if (error) {
-      console.error("Error fetching workflows:", error);
-      return;
-    }
+      if (error) {
+        console.error("Error fetching workflows:", error);
+        return;
+      }
 
-    if (data) {
-      setWorkflows(data as Workflow[]);
+      if (data) {
+        setWorkflows(data as Workflow[]);
+      }
+    } catch (error) {
+      console.error("Error in fetchWorkflows:", error);
     }
   };
 
@@ -215,6 +255,8 @@ export const WorkflowSleuth = () => {
   };
 
   const handleSelectSession = async (selectedSessionId: string) => {
+    if (selectedSessionId === sessionId) return;
+    setMessages([]);
     setSessionId(selectedSessionId);
   };
 
