@@ -5,7 +5,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/components/ui/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 
 const Auth = () => {
   const [email, setEmail] = useState('');
@@ -26,34 +25,9 @@ const Auth = () => {
     setIsLoading(true);
 
     try {
-      // Check if user exists by querying their email
-      const { data } = await supabase.auth.admin.listUsers();
-      
-      // Check if the user with this email exists in the returned list
-      const userExists = data?.users && data.users.some(user => {
-        // Explicitly type the user object to avoid 'never' type errors
-        const userObj: { email?: string } = user;
-        return userObj.email === email;
-      });
-      
-      // If user doesn't exist, sign them up first
-      if (!userExists) {
-        // Create user with password auth
-        const { error: signUpError } = await supabase.auth.signUp({
-          email,
-          password: 'workflowsleuth2025!',
-          options: {
-            data: { company_name: companyName }
-          }
-        });
-        
-        if (signUpError) throw signUpError;
-      }
-      
-      // Now sign in the user
+      // Sign in or sign up the user - our AuthContext handles both cases
       await signIn(email, companyName);
       navigate('/');
-      
     } catch (error: any) {
       console.error('Auth error:', error);
       toast({

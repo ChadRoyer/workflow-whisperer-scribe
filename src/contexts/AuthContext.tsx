@@ -35,17 +35,28 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const signIn = async (email: string, companyName: string) => {
-    // We'll use signUp to just create the user without sending any emails
-    // This creates a new user account or logs in an existing one
-    const { error } = await supabase.auth.signInWithPassword({
-      email: email,
-      // Using a standard password for all users, they'll be identified by email and company
-      password: 'workflowsleuth2025!'
-    });
-    
-    // If we need to update the user metadata, we would do it in a separate call
-    // after successful authentication
-    if (error) throw error;
+    try {
+      // First try signing in - if the user exists, this will work
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: email,
+        password: 'workflowsleuth2025!'
+      });
+      
+      // If sign-in fails (user doesn't exist), try to sign up
+      if (signInError) {
+        const { error: signUpError } = await supabase.auth.signUp({
+          email,
+          password: 'workflowsleuth2025!',
+          options: {
+            data: { company_name: companyName }
+          }
+        });
+        
+        if (signUpError) throw signUpError;
+      }
+    } catch (error) {
+      throw error;
+    }
   };
 
   const signOut = async () => {
