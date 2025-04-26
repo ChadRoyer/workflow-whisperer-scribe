@@ -1,4 +1,3 @@
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
@@ -266,6 +265,8 @@ When the user types "DONE" after being asked if they want to document another wo
     // Check if the response contains a function call
     let responseMessage = data.choices[0].message;
     
+    // If a workflow is successfully added, we'll return a response that includes
+    // both the workflow details and a confirmation message
     if (responseMessage.function_call && responseMessage.function_call.name === "add_workflow") {
       // Parse the function arguments
       const functionArgs = JSON.parse(responseMessage.function_call.arguments);
@@ -317,6 +318,7 @@ When the user types "DONE" after being asked if they want to document another wo
       // Prepare a confirmation message about the saved workflow
       const confirmation = `OK, I've saved the "${functionArgs.title}" workflow to our database. ${count >= 10 ? "We've captured quite a few workflows now. Would you like to continue or are you DONE for now?" : "Shall we document another workflow, or are you DONE for now?"}`;
       
+      // Return both the workflow data and a reply
       return new Response(JSON.stringify({ 
         reply: confirmation,
         addedWorkflow: workflowData ? workflowData[0] : null,
@@ -324,20 +326,20 @@ When the user types "DONE" after being asked if they want to document another wo
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
-    } else {
-      // Regular text response
-      return new Response(JSON.stringify({ 
-        reply: responseMessage.content,
-        addedWorkflow: null
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
     }
+    
+    // For regular text responses
+    return new Response(JSON.stringify({ 
+      reply: responseMessage.content,
+      addedWorkflow: null
+    }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   } catch (error) {
     console.error('Error in workflow-sleuth function:', error);
     return new Response(JSON.stringify({ 
       error: error.message,
-      reply: "I encountered an error while trying to save the workflow. Let me try collecting that information again."
+      reply: "I encountered an error while trying to process your message. Let me try again."
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

@@ -6,8 +6,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 
 interface Message {
+  id?: string;
   text: string;
   isBot: boolean;
+  sessionId?: string;
 }
 
 interface Workflow {
@@ -26,6 +28,36 @@ export const WorkflowSleuth = () => {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Load existing messages when session changes
+  useEffect(() => {
+    const loadMessages = async () => {
+      if (!sessionId) return;
+
+      const { data, error } = await supabase
+        .from('chat_messages')
+        .select('*')
+        .eq('session_id', sessionId)
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        console.error("Error loading messages:", error);
+        return;
+      }
+
+      if (data) {
+        const loadedMessages = data.map(msg => ({
+          id: msg.id,
+          text: msg.content,
+          isBot: msg.role === 'assistant',
+          sessionId: msg.session_id
+        }));
+        setMessages(loadedMessages);
+      }
+    };
+
+    loadMessages();
+  }, [sessionId]);
 
   useEffect(() => {
     // Initialize session
@@ -65,16 +97,47 @@ export const WorkflowSleuth = () => {
     }
 
     if (data && data.length > 0) {
-      setSessionId(data[0].id);
+      const newSessionId = data[0].id;
+      setSessionId(newSessionId);
       
-      // Add initial bot message
-      setMessages([
-        {
-          text: "Hi! I'm WorkflowSleuth. We'll list key workflows and pain points so we can spot AI wins. Let's start with the first question: Where does value first ENTER the business in a typical week?",
-          isBot: true,
-        },
-      ]);
+      // Add initial bot message and save it
+      const initialMessage = {
+        text: "Hi! I'm WorkflowSleuth. We'll list key workflows and pain points so we can spot AI wins. Let's start with the first question: Where does value first ENTER the business in a typical week?",
+        isBot: true
+      };
+      
+      await saveMessage(initialMessage, newSessionId);
+      setMessages([initialMessage]);
     }
+  };
+
+  const saveMessage = async (message: Message, currentSessionId?: string) => {
+    if (!currentSessionId && !sessionId) {
+      console.error("No session ID available");
+      return null;
+    }
+
+    const { data, error } = await supabase
+      .from('chat_messages')
+      .insert({
+        session_id: currentSessionId || sessionId,
+        role: message.isBot ? 'assistant' : 'user',
+        content: message.text
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Error saving message:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save message.",
+        variant: "destructive",
+      });
+      return null;
+    }
+
+    return data;
   };
 
   const fetchWorkflows = async () => {
@@ -105,8 +168,12 @@ export const WorkflowSleuth = () => {
       return;
     }
 
-    // Add user message
-    const updatedMessages = [...messages, { text: message, isBot: false }];
+    // Save user message
+    const userMessage = { text: message, isBot: false };
+    const savedUserMessage = await saveMessage(userMessage);
+    
+    // Add user message to state
+    const updatedMessages = [...messages, userMessage];
     setMessages(updatedMessages);
     setIsLoading(true);
 
@@ -124,8 +191,11 @@ export const WorkflowSleuth = () => {
         throw new Error(error.message);
       }
 
-      // Add bot response
-      setMessages(prev => [...prev, { text: data.reply, isBot: true }]);
+      // Save and add bot response
+      const botMessage = { text: data.reply, isBot: true };
+      const savedBotMessage = await saveMessage(botMessage);
+      
+      setMessages(prev => [...prev, botMessage]);
 
       // If a workflow was added, fetch updated workflows
       if (data.addedWorkflow) {
@@ -138,10 +208,15 @@ export const WorkflowSleuth = () => {
         description: "Failed to process your message. Please try again.",
         variant: "destructive",
       });
-      setMessages(prev => [...prev, { 
+      
+      // Save error message
+      const errorMessage = { 
         text: "I'm sorry, I encountered an error processing your message. Please try again.",
         isBot: true 
-      }]);
+      };
+      await saveMessage(errorMessage);
+      
+      setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
     }
@@ -152,7 +227,7 @@ export const WorkflowSleuth = () => {
       <div className="flex-1 overflow-y-auto space-y-4 mb-4 p-4">
         {messages.map((message, index) => (
           <ChatMessage
-            key={index}
+            key={message.id || index}
             isBot={message.isBot}
             message={message.text}
           />
