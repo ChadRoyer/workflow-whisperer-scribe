@@ -20,6 +20,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        console.log("Auth state changed:", event, session?.user?.email);
         setSession(session);
         setUser(session?.user ?? null);
       }
@@ -27,6 +28,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log("Got existing session:", session?.user?.email);
       setSession(session);
       setUser(session?.user ?? null);
     });
@@ -39,66 +41,64 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const userEmail = email.trim() || 'guest@workflowsleuth.com';
     const userCompany = companyName.trim() || 'Guest Company';
     
-    let signInSuccess = false;
+    console.log("Attempting to sign in with:", userEmail);
     
-    // First attempt: Try to sign in directly
     try {
+      // First attempt: Try with the provided email
       const { data, error } = await supabase.auth.signInWithPassword({
         email: userEmail,
         password: 'workflowsleuth2025!'
       });
       
       if (!error && data.session) {
-        signInSuccess = true;
+        console.log("Successfully signed in as:", userEmail);
         return; // Successfully signed in
       }
+      
+      console.log("Sign-in failed, attempting sign-up");
+      
+      // If sign-in failed, try to sign up
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email: userEmail,
+        password: 'workflowsleuth2025!',
+        options: {
+          data: { company_name: userCompany }
+        }
+      });
+      
+      if (!signUpError && signUpData.session) {
+        console.log("Successfully signed up and auto-signed in as:", userEmail);
+        return; // Successfully signed up and auto-signed in
+      }
+      
+      console.log("Sign-up failed or user already exists, trying final sign-in");
+      
+      // Try sign-in one more time (in case the user already exists)
+      const { error: finalError } = await supabase.auth.signInWithPassword({
+        email: userEmail,
+        password: 'workflowsleuth2025!'
+      });
+      
+      if (!finalError) {
+        console.log("Final sign-in attempt succeeded as:", userEmail);
+        return;
+      }
+      
+      // Last resort: Sign in as guest
+      console.log("All attempts failed, using guest account");
+      const { error: guestError } = await supabase.auth.signInWithPassword({
+        email: 'guest@workflowsleuth.com',
+        password: 'workflowsleuth2025!'
+      });
+      
+      if (guestError) {
+        console.error("Even guest login failed:", guestError);
+        throw new Error("Authentication failed completely");
+      }
+      
     } catch (e) {
-      console.log("First sign-in attempt failed, continuing to sign-up");
-    }
-    
-    // If we're here, sign-in failed, try to sign up
-    if (!signInSuccess) {
-      try {
-        const { data, error } = await supabase.auth.signUp({
-          email: userEmail,
-          password: 'workflowsleuth2025!',
-          options: {
-            data: { company_name: userCompany }
-          }
-        });
-        
-        if (!error && data.session) {
-          signInSuccess = true;
-          return; // Successfully signed up and auto-signed in
-        }
-      } catch (e) {
-        console.log("Sign-up attempt failed, continuing to final sign-in");
-      }
-    }
-    
-    // Final fallback: Force sign-in again
-    if (!signInSuccess) {
-      try {
-        const { error } = await supabase.auth.signInWithPassword({
-          email: userEmail,
-          password: 'workflowsleuth2025!'
-        });
-        
-        if (error) {
-          console.error("All authentication attempts failed");
-          // Instead of throwing error, we'll create an anonymous session
-          const { error: anonError } = await supabase.auth.signInWithPassword({
-            email: 'guest@workflowsleuth.com',
-            password: 'workflowsleuth2025!'
-          });
-          
-          if (anonError) {
-            console.error("Even anonymous auth failed:", anonError);
-          }
-        }
-      } catch (e) {
-        console.error("Fatal authentication error:", e);
-      }
+      console.error("Authentication error:", e);
+      throw e;
     }
   };
 

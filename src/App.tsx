@@ -9,14 +9,17 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import { useAuth } from "./contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { session } = useAuth();
   
   if (!session) {
+    console.log("No session found, redirecting to auth");
     return <Navigate to="/auth" replace />;
   }
   
+  console.log("Session found, rendering protected route");
   return <>{children}</>;
 };
 

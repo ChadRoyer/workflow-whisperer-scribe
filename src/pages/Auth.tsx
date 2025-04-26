@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -18,6 +19,7 @@ const Auth = () => {
   // Redirect if already logged in
   useEffect(() => {
     if (session) {
+      console.log("Session detected, redirecting to home");
       navigate('/');
     }
   }, [session, navigate]);
@@ -28,24 +30,36 @@ const Auth = () => {
     setErrorMessage(null);
 
     try {
-      // Will always succeed with either provided credentials or default ones
+      console.log("Starting sign-in process");
       await signIn(email, companyName);
       
-      // Show a success message if the redirect doesn't happen immediately
       toast({
         title: "Success",
         description: "Signing you in...",
       });
       
-      // Force navigation after 1 second as a fallback
+      // If we've reached this point and no redirect has occurred,
+      // force a redirect after a short delay
       setTimeout(() => {
-        if (!session) {
-          navigate('/');
-        }
-      }, 1000);
+        const currentSession = supabase.auth.getSession();
+        currentSession.then(({ data }) => {
+          if (data.session) {
+            console.log("Session found after timeout, forcing navigation");
+            navigate('/');
+          } else {
+            console.log("No session after timeout");
+          }
+        });
+      }, 1500);
+      
     } catch (error) {
-      // This should now never happen, but keep it as a safeguard
       console.error('Auth error:', error);
+      setErrorMessage("Authentication failed. Please try again.");
+      toast({
+        title: "Error",
+        description: "Authentication failed. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
