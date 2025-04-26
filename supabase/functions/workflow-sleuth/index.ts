@@ -1,3 +1,4 @@
+
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
@@ -17,12 +18,12 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Check if it's a test request for the OpenAI API
   try {
-    const reqData = await req.json();
+    // Parse request body ONCE and store it
+    const requestData = await req.json();
     
     // Handle test-openai action
-    if (reqData.action === 'test-openai') {
+    if (requestData.action === 'test-openai') {
       try {
         // First, verify we have the OpenAI API key
         if (!openAIApiKey) {
@@ -116,8 +117,8 @@ serve(async (req) => {
       }
     }
 
-    // Original workflow sleuth logic
-    const { message, sessionId, messages } = await req.json();
+    // Original workflow sleuth logic - use requestData instead of req.json()
+    const { message, sessionId, messages } = requestData;
     
     // Create a Supabase client for database operations
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -183,7 +184,7 @@ When the user types "DONE" after being asked if they want to document another wo
     // Prepare the conversation history for OpenAI
     const conversationHistory = [
       { role: "system", content: systemInstruction },
-      ...messages.map((msg: any) => ({
+      ...messages.map((msg) => ({
         role: msg.isBot ? "assistant" : "user",
         content: msg.text
       }))
