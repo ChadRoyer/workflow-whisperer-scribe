@@ -10,9 +10,13 @@ import { useSessionTitle } from "@/hooks/useSessionTitle";
 import { toast } from "@/components/ui/use-toast";
 import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useAuth } from "@/contexts/AuthContext";
 
 export const WorkflowSleuth = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { userInfo } = useAuth();
+  const [renderError, setRenderError] = useState<string | null>(null);
+  
   const {
     sessionId,
     messages,
@@ -22,6 +26,7 @@ export const WorkflowSleuth = () => {
     setIsLoading,
     initialMessageSent,
     initializationError,
+    loadMessages,
   } = useWorkflowSession();
 
   const { handleSendMessage, sendInitialMessage } = useWorkflowMessages({
@@ -36,17 +41,31 @@ export const WorkflowSleuth = () => {
 
   // Force initial message when component mounts if we have a session
   useEffect(() => {
-    if (sessionId && messages.length === 0 && !initialMessageSent.current) {
-      console.log("WorkflowSleuth component mounted - sending initial message");
-      sendInitialMessage();
+    try {
+      if (sessionId && messages.length === 0 && !initialMessageSent.current) {
+        console.log("WorkflowSleuth component mounted - sending initial message", { sessionId });
+        sendInitialMessage();
+      }
+    } catch (error) {
+      console.error("Error in initial message effect:", error);
+      setRenderError("Failed to initialize chat. Please refresh the page.");
     }
   }, [sessionId, messages.length, sendInitialMessage]);
 
   const handleSelectSession = async (selectedSessionId: string) => {
-    if (selectedSessionId === sessionId) return;
-    setMessages([]);
-    initialMessageSent.current = false;
-    setSessionId(selectedSessionId);
+    try {
+      if (selectedSessionId === sessionId) return;
+      setMessages([]);
+      initialMessageSent.current = false;
+      setSessionId(selectedSessionId);
+    } catch (error) {
+      console.error("Error selecting session:", error);
+      toast({
+        title: "Error",
+        description: "Failed to select chat session. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const scrollToBottom = () => {
@@ -57,6 +76,15 @@ export const WorkflowSleuth = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // If no user info is available yet, show a loading state
+  if (!userInfo) {
+    return (
+      <div className="flex h-[80vh] w-full mx-auto items-center justify-center">
+        <p className="text-muted-foreground">Initializing application...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-[80vh] w-full mx-auto overflow-hidden">
@@ -70,17 +98,17 @@ export const WorkflowSleuth = () => {
       </div>
       <div className="flex-1 flex flex-col rounded-lg border border-border bg-card shadow-sm ml-4">
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {initializationError && (
+          {(initializationError || renderError) && (
             <Alert variant="destructive" className="mb-4">
               <AlertCircle className="h-4 w-4 mr-2" />
               <AlertDescription>
-                {initializationError}. Please try refreshing the page or contact support.
+                {initializationError || renderError}. Please try refreshing the page or contact support.
               </AlertDescription>
             </Alert>
           )}
-          {messages.length === 0 && !isLoading && !initializationError ? (
+          {messages.length === 0 && !isLoading && !initializationError && !renderError ? (
             <div className="flex h-full items-center justify-center">
-              <p className="text-muted-foreground">Initializing chat...</p>
+              <p className="text-muted-foreground">Initializing chat for {userInfo.companyName}...</p>
             </div>
           ) : (
             messages.map((message, index) => (
@@ -103,7 +131,7 @@ export const WorkflowSleuth = () => {
         <div className="mt-auto p-4 border-t border-border">
           <ChatInput 
             onSendMessage={handleSendMessage} 
-            disabled={isLoading || (!sessionId) || !!initializationError} 
+            disabled={isLoading || (!sessionId) || !!initializationError || !!renderError} 
           />
         </div>
       </div>

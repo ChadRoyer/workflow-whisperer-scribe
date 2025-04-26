@@ -1,6 +1,6 @@
 
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,12 +15,15 @@ const Auth = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { signIn, userInfo } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
-  // If userInfo exists, redirect to main page
-  if (userInfo) {
-    navigate('/', { replace: true });
-    return null;
-  }
+  // Only redirect if userInfo exists and we're on the auth page
+  useEffect(() => {
+    if (userInfo && location.pathname === '/auth') {
+      console.log("User already authenticated, redirecting to home");
+      navigate('/', { replace: true });
+    }
+  }, [userInfo, navigate, location.pathname]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,9 +45,7 @@ const Auth = () => {
       });
       
       // Navigate to the main page
-      setTimeout(() => {
-        navigate('/', { replace: true });
-      }, 100);
+      navigate('/', { replace: true });
       
     } catch (error) {
       console.error('Error during form submission:', error);
