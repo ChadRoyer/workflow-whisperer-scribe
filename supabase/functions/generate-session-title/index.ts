@@ -30,13 +30,23 @@ serve(async (req) => {
       });
     }
 
+    // Filter to only include user messages
+    const userMessages = messages.filter((msg: any) => msg.role === 'user');
+
+    if (userMessages.length === 0) {
+      return new Response(JSON.stringify({ error: 'No user messages found' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // Create a system prompt to generate an intuitive title
     const titleGenerationPrompt = `
-      Generate a concise, descriptive title (max 30 characters) for a workflow discovery conversation 
-      based on the context of these messages. Focus on the key workflow or business process being discussed.
+      Generate a concise, descriptive title (max 30 characters) based on the context of these user messages.
+      Focus on identifying the key workflow, process, or topic being discussed.
       
-      Messages:
-      ${messages.map((msg: any) => `${msg.role === 'assistant' ? 'AI:' : 'User:'} ${msg.text}`).join('\n')}
+      User Messages:
+      ${userMessages.map((msg: any) => msg.text).join('\n')}
     `;
 
     // Call OpenAI to generate title
@@ -51,7 +61,7 @@ serve(async (req) => {
         messages: [
           { 
             role: 'system', 
-            content: 'You are an assistant that generates concise titles for workflow discovery conversations.' 
+            content: 'You are an assistant that generates concise titles based on user messages. Focus on the main topic or workflow being discussed.' 
           },
           { 
             role: 'user', 
