@@ -22,33 +22,58 @@ export const ChatHistory = ({ sessionId, onSelectSession }: ChatHistoryProps) =>
   const [sessions, setSessions] = useState<Session[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch sessions on component mount
+  // Fetch sessions on component mount and when sessionId changes
   useEffect(() => {
     fetchSessions();
-  }, []);
+  }, [sessionId]);
 
   const fetchSessions = async () => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
+      const { data: sessionsData, error: sessionsError } = await supabase
         .from('sessions')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) {
+      if (sessionsError) {
+        console.error("Error fetching sessions:", sessionsError);
         toast({
           title: "Error",
           description: "Failed to load chat history",
           variant: "destructive",
         });
+        setIsLoading(false);
         return;
       }
 
-      // Filter out sessions with no messages
-      const filteredSessions = await filterSessionsWithMessages(data || []);
+      if (!sessionsData || sessionsData.length === 0) {
+        setSessions([]);
+        setIsLoading(false);
+        return;
+      }
+
+      // For each session, check if it has any messages
+      const sessionsWithMessages = await Promise.all(
+        sessionsData.map(async (session) => {
+          const { count, error } = await supabase
+            .from('chat_messages')
+            .select('id', { count: 'exact', head: true })
+            .eq('session_id', session.id);
+          
+          // Return session with a hasMessages flag
+          return {
+            ...session,
+            hasMessages: !error && count !== null && count > 0
+          };
+        })
+      );
+
+      // Filter out sessions without messages
+      const filteredSessions = sessionsWithMessages.filter(session => session.hasMessages);
+      
       setSessions(filteredSessions);
     } catch (error) {
-      console.error("Error fetching sessions:", error);
+      console.error("Error in fetchSessions:", error);
       toast({
         title: "Error",
         description: "Failed to load chat history",
@@ -57,24 +82,6 @@ export const ChatHistory = ({ sessionId, onSelectSession }: ChatHistoryProps) =>
     } finally {
       setIsLoading(false);
     }
-  };
-
-  // Only show sessions that have messages
-  const filterSessionsWithMessages = async (sessions: Session[]) => {
-    const sessionsWithMessages = [];
-    
-    for (const session of sessions) {
-      const { count, error } = await supabase
-        .from('chat_messages')
-        .select('id', { count: 'exact', head: true })
-        .eq('session_id', session.id);
-      
-      if (!error && count && count > 0) {
-        sessionsWithMessages.push(session);
-      }
-    }
-    
-    return sessionsWithMessages;
   };
 
   const deleteSession = async (id: string) => {
@@ -86,17 +93,19 @@ export const ChatHistory = ({ sessionId, onSelectSession }: ChatHistoryProps) =>
         .eq('session_id', id);
 
       if (messagesError) {
+        console.error("Error deleting messages:", messagesError);
         throw messagesError;
       }
 
       // Then delete the session
-      const { error } = await supabase
+      const { error: sessionError } = await supabase
         .from('sessions')
         .delete()
         .eq('id', id);
 
-      if (error) {
-        throw error;
+      if (sessionError) {
+        console.error("Error deleting session:", sessionError);
+        throw sessionError;
       }
 
       toast({
@@ -112,7 +121,7 @@ export const ChatHistory = ({ sessionId, onSelectSession }: ChatHistoryProps) =>
         window.location.reload();
       }
     } catch (error) {
-      console.error("Error deleting session:", error);
+      console.error("Error in deleteSession:", error);
       toast({
         title: "Error",
         description: "Failed to delete chat",
