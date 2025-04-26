@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { Trash2 } from "lucide-react";
@@ -91,16 +90,32 @@ export const ChatHistory = ({ sessionId, onSelectSession }: ChatHistoryProps) =>
   // Function to clean up abandoned empty sessions
   const cleanupEmptySessions = async () => {
     try {
-      // Find sessions with no messages
+      // Get all sessions with messages (these we want to keep)
+      const { data: sessionsWithMessages, error: messagesError } = await supabase
+        .from('chat_messages')
+        .select('session_id')
+        .is('session_id', 'not.null');
+
+      if (messagesError) {
+        console.error("Error finding sessions with messages:", messagesError);
+        return;
+      }
+
+      // Extract the session IDs that have messages
+      const sessionIdsWithMessages = sessionsWithMessages
+        ? [...new Set(sessionsWithMessages.map(msg => msg.session_id))]
+        : [];
+
+      // If there are no sessions with messages, we don't need to do anything
+      if (sessionIdsWithMessages.length === 0) {
+        return;
+      }
+
+      // Find sessions that don't have any messages
       const { data: emptySessions, error: findError } = await supabase
         .from('sessions')
         .select('id')
-        .not('id', 'in', (
-          supabase
-            .from('chat_messages')
-            .select('session_id')
-            .is('session_id', 'not.null')
-        ));
+        .not('id', 'in', sessionIdsWithMessages);
 
       if (findError) {
         console.error("Error finding empty sessions:", findError);
