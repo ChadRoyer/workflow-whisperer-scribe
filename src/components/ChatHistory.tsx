@@ -16,6 +16,7 @@ interface Session {
   id: string;
   created_at: string;
   company_name: string;
+  title: string | null;
 }
 
 export const ChatHistory = ({ sessionId, onSelectSession }: ChatHistoryProps) => {
@@ -30,6 +31,9 @@ export const ChatHistory = ({ sessionId, onSelectSession }: ChatHistoryProps) =>
   const fetchSessions = async () => {
     setIsLoading(true);
     try {
+      // First, clean up any empty sessions before fetching the list
+      await cleanupEmptySessions();
+
       const { data: sessionsData, error: sessionsError } = await supabase
         .from('sessions')
         .select('*')
@@ -81,6 +85,45 @@ export const ChatHistory = ({ sessionId, onSelectSession }: ChatHistoryProps) =>
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Function to clean up abandoned empty sessions
+  const cleanupEmptySessions = async () => {
+    try {
+      // Find sessions with no messages
+      const { data: emptySessions, error: findError } = await supabase
+        .from('sessions')
+        .select('id')
+        .not('id', 'in', (
+          supabase
+            .from('chat_messages')
+            .select('session_id')
+            .is('session_id', 'not.null')
+        ));
+
+      if (findError) {
+        console.error("Error finding empty sessions:", findError);
+        return;
+      }
+
+      if (emptySessions && emptySessions.length > 0) {
+        // Delete the empty sessions
+        const emptySessionIds = emptySessions.map(session => session.id);
+        
+        const { error: deleteError } = await supabase
+          .from('sessions')
+          .delete()
+          .in('id', emptySessionIds);
+
+        if (deleteError) {
+          console.error("Error deleting empty sessions:", deleteError);
+        } else {
+          console.log(`Cleaned up ${emptySessions.length} empty sessions`);
+        }
+      }
+    } catch (error) {
+      console.error("Error in cleanupEmptySessions:", error);
     }
   };
 
@@ -153,7 +196,7 @@ export const ChatHistory = ({ sessionId, onSelectSession }: ChatHistoryProps) =>
               onClick={() => onSelectSession(session.id)}
             >
               <div className="flex flex-col">
-                <span className="font-medium">{session.company_name}</span>
+                <span className="font-medium">{session.title || session.company_name}</span>
                 <span className="text-xs text-muted-foreground">
                   {format(new Date(session.created_at), 'MMM d, yyyy')}
                 </span>

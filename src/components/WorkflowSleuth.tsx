@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
@@ -34,12 +33,15 @@ export const WorkflowSleuth = () => {
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const hasInitialized = useRef(false);
+  const initialMessageSent = useRef(false);
 
   useEffect(() => {
     if (sessionId) {
       // Save sessionId to localStorage whenever it changes
       localStorage.setItem('workflowSleuthSessionId', sessionId);
-      loadMessages();
+      
+      // Validate the session exists and has messages before proceeding
+      validateAndLoadSession();
     } else if (!hasInitialized.current) {
       // Only initialize a new session if we don't have one and haven't tried initializing yet
       initializeSession();
@@ -50,6 +52,52 @@ export const WorkflowSleuth = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  const validateAndLoadSession = async () => {
+    if (!sessionId) return;
+
+    try {
+      // Check if session exists
+      const { data: sessionData, error: sessionError } = await supabase
+        .from('sessions')
+        .select('id')
+        .eq('id', sessionId)
+        .single();
+      
+      if (sessionError || !sessionData) {
+        // Session doesn't exist, clear localStorage and state
+        console.log('Session not found, clearing state');
+        localStorage.removeItem('workflowSleuthSessionId');
+        setSessionId(null);
+        setMessages([]);
+        hasInitialized.current = false; // Allow re-initialization
+        return;
+      }
+      
+      // Now check if session has messages
+      const { count, error: countError } = await supabase
+        .from('chat_messages')
+        .select('id', { count: 'exact', head: true })
+        .eq('session_id', sessionId);
+      
+      if (countError) {
+        console.error("Error checking messages count:", countError);
+        return;
+      }
+      
+      if (count && count > 0) {
+        // Session has messages, load them
+        loadMessages();
+      } else {
+        // Session exists but has no messages
+        // We'll keep the session, but won't load anything
+        // The initial message will be sent when the user interacts
+        setMessages([]);
+      }
+    } catch (error) {
+      console.error("Error in validateAndLoadSession:", error);
+    }
+  };
 
   const loadMessages = async () => {
     if (!sessionId) return;
@@ -74,22 +122,10 @@ export const WorkflowSleuth = () => {
           sessionId: msg.session_id
         }));
         setMessages(loadedMessages);
+        initialMessageSent.current = true;
       } else {
-        // If there are no messages for this session, it might be a stale reference
-        // Check if the session exists
-        const { data: sessionData, error: sessionError } = await supabase
-          .from('sessions')
-          .select('id')
-          .eq('id', sessionId)
-          .single();
-        
-        if (sessionError || !sessionData) {
-          // Session doesn't exist, clear localStorage and state
-          localStorage.removeItem('workflowSleuthSessionId');
-          setSessionId(null);
-          setMessages([]);
-          hasInitialized.current = false; // Allow re-initialization
-        }
+        // No messages for this session yet
+        setMessages([]);
       }
     } catch (error) {
       console.error("Error in loadMessages:", error);
@@ -102,6 +138,9 @@ export const WorkflowSleuth = () => {
 
   const initializeSession = async () => {
     try {
+      // Only create a session, but don't send the initial message yet
+      // We'll send it when the user first interacts with the chat
+      
       const { data, error } = await supabase
         .from('sessions')
         .insert([
@@ -126,17 +165,26 @@ export const WorkflowSleuth = () => {
       if (data && data.length > 0) {
         const newSessionId = data[0].id;
         setSessionId(newSessionId);
-        
-        const initialMessage = {
-          text: "Hi! I'm WorkflowSleuth. We'll list key workflows and pain points so we can spot AI wins. Let's start with the first question: Where does value first ENTER the business in a typical week?",
-          isBot: true
-        };
-        
-        await saveMessage(initialMessage, newSessionId);
-        setMessages([initialMessage]);
+        setMessages([]);
+        // We'll send the initial message when the user first interacts
       }
     } catch (error) {
       console.error("Error in initializeSession:", error);
+    }
+  };
+
+  const sendInitialMessage = async () => {
+    if (!sessionId || initialMessageSent.current) return;
+    
+    const initialMessage = {
+      text: "Hi! I'm WorkflowSleuth. We'll list key workflows and pain points so we can spot AI wins. Let's start with the first question: Where does value first ENTER the business in a typical week?",
+      isBot: true
+    };
+    
+    const savedMessage = await saveMessage(initialMessage);
+    if (savedMessage) {
+      setMessages([initialMessage]);
+      initialMessageSent.current = true;
     }
   };
 
@@ -197,6 +245,11 @@ export const WorkflowSleuth = () => {
   };
 
   const handleSendMessage = async (message: string) => {
+    // Send the initial bot message if this is first user interaction
+    if (!initialMessageSent.current) {
+      await sendInitialMessage();
+    }
+
     if (!sessionId) {
       toast({
         title: "Error",
@@ -257,6 +310,7 @@ export const WorkflowSleuth = () => {
   const handleSelectSession = async (selectedSessionId: string) => {
     if (selectedSessionId === sessionId) return;
     setMessages([]);
+    initialMessageSent.current = false; // Reset this flag when changing sessions
     setSessionId(selectedSessionId);
   };
 
@@ -285,7 +339,9 @@ export const WorkflowSleuth = () => {
   };
 
   useEffect(() => {
-    generateSessionTitle();
+    if (messages.length >= 3 && sessionId) {
+      generateSessionTitle();
+    }
   }, [messages]);
 
   return (
