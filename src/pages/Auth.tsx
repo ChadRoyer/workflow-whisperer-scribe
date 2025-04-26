@@ -26,11 +26,14 @@ const Auth = () => {
     setIsLoading(true);
 
     try {
-      // First check if user exists
-      const { data } = await supabase.auth.admin.getUserByEmail(email);
+      // Check if user exists by querying their email
+      const { data, error: userError } = await supabase.auth.admin.listUsers();
+      
+      // Check if the user with this email exists in the returned list
+      const userExists = data?.users && data.users.some(user => user.email === email);
       
       // If user doesn't exist, sign them up first
-      if (!data?.user) {
+      if (!userExists) {
         // Create user with password auth
         const { error: signUpError } = await supabase.auth.signUp({
           email,
