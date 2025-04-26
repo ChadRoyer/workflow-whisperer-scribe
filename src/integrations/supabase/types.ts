@@ -48,6 +48,7 @@ export type Database = {
           facilitator: string
           finished: boolean | null
           id: string
+          title: string | null
         }
         Insert: {
           company_name: string
@@ -55,6 +56,7 @@ export type Database = {
           facilitator: string
           finished?: boolean | null
           id?: string
+          title?: string | null
         }
         Update: {
           company_name?: string
@@ -62,6 +64,7 @@ export type Database = {
           facilitator?: string
           finished?: boolean | null
           id?: string
+          title?: string | null
         }
         Relationships: []
       }

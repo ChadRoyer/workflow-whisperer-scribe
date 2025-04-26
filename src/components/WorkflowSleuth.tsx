@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
@@ -218,6 +217,34 @@ export const WorkflowSleuth = () => {
   const handleSelectSession = async (selectedSessionId: string) => {
     setSessionId(selectedSessionId);
   };
+
+  const generateSessionTitle = async () => {
+    if (!sessionId || messages.length < 3) return;
+
+    try {
+      const titleGenerationMessages = messages.slice(0, 5).map(msg => ({
+        role: msg.isBot ? 'assistant' : 'user',
+        text: msg.text
+      }));
+
+      const { data, error } = await supabase.functions.invoke('generate-session-title', {
+        body: {
+          sessionId,
+          messages: titleGenerationMessages
+        }
+      });
+
+      if (error) {
+        console.error('Failed to generate session title:', error);
+      }
+    } catch (error) {
+      console.error('Error in generateSessionTitle:', error);
+    }
+  };
+
+  useEffect(() => {
+    generateSessionTitle();
+  }, [messages]);
 
   return (
     <div className="flex h-[80vh] w-full mx-auto overflow-hidden">
