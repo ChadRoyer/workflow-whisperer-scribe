@@ -40,8 +40,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const { error } = await supabase.auth.signInWithPassword({
       email: email,
       // Using a standard password for all users, they'll be identified by email and company
-      password: 'workflowsleuth2025!', 
+      password: 'workflowsleuth2025!',
       options: {
+        // Update user metadata with company name
         data: { company_name: companyName }
       }
     });

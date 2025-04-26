@@ -30,7 +30,9 @@ const Auth = () => {
       const { data, error: userError } = await supabase.auth.admin.listUsers();
       
       // Check if the user with this email exists in the returned list
-      const userExists = data?.users && data.users.some(user => user.email === email);
+      const userExists = data?.users && data.users.some(user => {
+        return user.email === email;
+      });
       
       // If user doesn't exist, sign them up first
       if (!userExists) {
