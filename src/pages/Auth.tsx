@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -14,16 +14,8 @@ const Auth = () => {
   const [companyName, setCompanyName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const { signIn, session } = useAuth();
+  const { signIn } = useAuth();
   const navigate = useNavigate();
-
-  // Redirect if already logged in
-  useEffect(() => {
-    if (session) {
-      console.log("Session detected, redirecting to home");
-      navigate('/');
-    }
-  }, [session, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,26 +31,15 @@ const Auth = () => {
         description: "Signing you in...",
       });
       
-      // If we've reached this point and no redirect has occurred,
-      // force a redirect after a short delay
-      setTimeout(() => {
-        const currentSession = supabase.auth.getSession();
-        currentSession.then(({ data }) => {
-          if (data.session) {
-            console.log("Session found after timeout, forcing navigation");
-            navigate('/');
-          } else {
-            console.log("No session after timeout");
-          }
-        });
-      }, 1500);
+      // No need to wait for session, we're just redirecting
+      navigate('/');
       
     } catch (error) {
       console.error('Auth error:', error);
-      setErrorMessage("Authentication failed. Please try again.");
+      setErrorMessage("System access failed. Please try again.");
       toast({
         title: "Error",
-        description: "Authentication failed. Please try again.",
+        description: "System access failed. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -90,7 +71,6 @@ const Auth = () => {
               value={companyName}
               onChange={(e) => setCompanyName(e.target.value)}
               placeholder="Enter your company name"
-              required
             />
           </div>
           
@@ -102,7 +82,6 @@ const Auth = () => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Enter your email"
-              required
             />
           </div>
 

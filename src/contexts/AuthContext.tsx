@@ -41,60 +41,38 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const userEmail = email.trim() || 'guest@workflowsleuth.com';
     const userCompany = companyName.trim() || 'Guest Company';
     
-    console.log("Attempting to sign in with:", userEmail);
+    console.log("Attempting simplified sign-in with:", userEmail);
     
     try {
-      // First attempt: Try with the provided email
+      // Simple sign in - always use guest account
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: userEmail,
-        password: 'workflowsleuth2025!'
-      });
-      
-      if (!error && data.session) {
-        console.log("Successfully signed in as:", userEmail);
-        return; // Successfully signed in
-      }
-      
-      console.log("Sign-in failed, attempting sign-up");
-      
-      // If sign-in failed, try to sign up
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-        email: userEmail,
-        password: 'workflowsleuth2025!',
-        options: {
-          data: { company_name: userCompany }
-        }
-      });
-      
-      if (!signUpError && signUpData.session) {
-        console.log("Successfully signed up and auto-signed in as:", userEmail);
-        return; // Successfully signed up and auto-signed in
-      }
-      
-      console.log("Sign-up failed or user already exists, trying final sign-in");
-      
-      // Try sign-in one more time (in case the user already exists)
-      const { error: finalError } = await supabase.auth.signInWithPassword({
-        email: userEmail,
-        password: 'workflowsleuth2025!'
-      });
-      
-      if (!finalError) {
-        console.log("Final sign-in attempt succeeded as:", userEmail);
-        return;
-      }
-      
-      // Last resort: Sign in as guest
-      console.log("All attempts failed, using guest account");
-      const { error: guestError } = await supabase.auth.signInWithPassword({
         email: 'guest@workflowsleuth.com',
         password: 'workflowsleuth2025!'
       });
       
-      if (guestError) {
-        console.error("Even guest login failed:", guestError);
-        throw new Error("Authentication failed completely");
+      if (error) {
+        console.error("Guest login failed:", error);
+        throw new Error("Unable to access the system");
       }
+      
+      // User is now logged in as guest, but we store their provided info
+      if (data.session && userEmail !== 'guest@workflowsleuth.com') {
+        // Store the user's actual email and company name in profiles table
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .upsert({
+            id: data.user.id,
+            email: userEmail,
+            company_name: userCompany
+          });
+          
+        if (profileError) {
+          console.error("Error storing user profile:", profileError);
+          // Continue anyway, this is non-critical
+        }
+      }
+      
+      console.log("Successfully signed in");
       
     } catch (e) {
       console.error("Authentication error:", e);

@@ -9,8 +9,8 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import { useAuth } from "./contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
 
+// Simplified ProtectedRoute - only checks for any session
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { session } = useAuth();
   
