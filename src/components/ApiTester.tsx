@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { InfoIcon } from "lucide-react";
 
 export const ApiTester = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -40,7 +42,19 @@ export const ApiTester = () => {
         if (data?.rawResponse) {
           setRawResponse(data.rawResponse);
         }
-        throw new Error(data?.error || "Unknown error occurred");
+        
+        // Check for specific API key error
+        if (data?.rawResponse?.error?.code === "invalid_api_key") {
+          setError("Invalid OpenAI API key. Please check your API key in the Supabase dashboard.");
+        } else {
+          setError(data?.error || "Unknown error occurred");
+        }
+        
+        toast({
+          title: "Connection Failed",
+          description: "Failed to connect to OpenAI API. See details below.",
+          variant: "destructive",
+        });
       }
     } catch (err) {
       console.error("Error testing OpenAI connection:", err);
@@ -81,9 +95,19 @@ export const ApiTester = () => {
         )}
         
         {error && (
-          <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
-            <p className="font-semibold text-red-700">Error</p>
-            <p className="text-sm text-red-600">{error}</p>
+          <div className="mt-4">
+            <Alert variant="destructive">
+              <InfoIcon className="h-4 w-4" />
+              <AlertTitle>Error connecting to OpenAI</AlertTitle>
+              <AlertDescription>
+                {error}
+                {error.includes("API key") && (
+                  <p className="mt-2 text-sm">
+                    You need to set a valid OpenAI API key in your Supabase project secrets.
+                  </p>
+                )}
+              </AlertDescription>
+            </Alert>
             
             {rawResponse && (
               <div className="mt-2">

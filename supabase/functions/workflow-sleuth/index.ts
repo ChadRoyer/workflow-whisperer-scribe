@@ -30,7 +30,19 @@ serve(async (req) => {
           console.error('OpenAI API key is not set');
           return new Response(JSON.stringify({
             success: false,
-            error: "OpenAI API key is not configured"
+            error: "OpenAI API key is not configured in Supabase secrets"
+          }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 500
+          });
+        }
+        
+        // Check for obviously invalid API key format
+        if (openAIApiKey.length < 20) {
+          console.error('OpenAI API key appears to be invalid (too short)');
+          return new Response(JSON.stringify({
+            success: false,
+            error: "OpenAI API key appears to be invalid (too short)"
           }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 500
@@ -71,6 +83,16 @@ serve(async (req) => {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 200
           });
+        } else if (data.error) {
+          // If the response contains an error, return it
+          return new Response(JSON.stringify({
+            success: false,
+            error: `OpenAI API Error: ${data.error.message || 'Unknown error'}`,
+            rawResponse: data
+          }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 500
+          });
         } else {
           // If the response doesn't have the expected structure, return the whole response
           return new Response(JSON.stringify({
@@ -86,7 +108,8 @@ serve(async (req) => {
         console.error('OpenAI API Test Error:', error);
         return new Response(JSON.stringify({
           success: false,
-          error: error.message
+          error: error.message,
+          stack: error.stack
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 500
