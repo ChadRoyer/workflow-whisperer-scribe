@@ -9,9 +9,10 @@ import { Plus } from "lucide-react";
 interface ChatHistoryProps {
   sessionId: string | null;
   onSelectSession: (sessionId: string) => void;
+  onNewChat: () => void;
 }
 
-export const ChatHistory = ({ sessionId, onSelectSession }: ChatHistoryProps) => {
+export const ChatHistory = ({ sessionId, onSelectSession, onNewChat }: ChatHistoryProps) => {
   const { sessions, isLoading, fetchSessions, deleteSession } = useSessionManagement(sessionId);
   const { cleanupEmptySessions } = useSessionCleanup();
 
@@ -19,18 +20,13 @@ export const ChatHistory = ({ sessionId, onSelectSession }: ChatHistoryProps) =>
     cleanupEmptySessions().then(() => fetchSessions());
   }, [sessionId, cleanupEmptySessions, fetchSessions]);
 
-  const handleNewChat = () => {
-    // Force reload to start a new chat
-    window.location.reload();
-  };
-
   return (
     <div className="h-full flex flex-col overflow-hidden">
       <div className="border-b p-4">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">Chat History</h2>
           <Button 
-            onClick={handleNewChat}
+            onClick={onNewChat}
             variant="outline" 
             size="sm"
             className="ml-2"

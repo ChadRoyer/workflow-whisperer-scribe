@@ -97,7 +97,7 @@ export const useWorkflowSession = () => {
     }
   };
 
-  const initializeSession = async () => {
+  const createNewSession = async () => {
     try {
       setInitializationError(null);
       if (!userInfo) {
@@ -105,7 +105,12 @@ export const useWorkflowSession = () => {
         return;
       }
       
-      console.log("Initializing session with company name:", userInfo.companyName);
+      // Reset state before creating new session
+      setMessages([]);
+      initialMessageSent.current = false;
+      lastLoadedSessionId.current = null;
+      
+      console.log("Creating new session with company name:", userInfo.companyName);
 
       const { data, error } = await supabase
         .from('sessions')
@@ -119,7 +124,7 @@ export const useWorkflowSession = () => {
 
       if (error) {
         console.error("Error creating session:", error);
-        setInitializationError("Failed to initialize session");
+        setInitializationError("Failed to create new session");
         toast({
           title: "Error",
           description: "Failed to create a new session. Please try again.",
@@ -133,14 +138,21 @@ export const useWorkflowSession = () => {
         console.log("Created new session with ID:", newSessionId);
         localStorage.setItem('workflowSleuthSessionId', newSessionId);
         setSessionId(newSessionId);
-        setMessages([]);
-        initialMessageSent.current = false;
-        lastLoadedSessionId.current = newSessionId;
       }
     } catch (error) {
-      console.error("Error in initializeSession:", error);
-      setInitializationError("Failed to initialize session");
+      console.error("Error in createNewSession:", error);
+      setInitializationError("Failed to create new session");
     }
+  };
+
+  // Use initializeSession for first-time initialization only
+  const initializeSession = async () => {
+    if (!userInfo) {
+      console.log("No user info available");
+      return;
+    }
+    
+    return createNewSession();
   };
 
   // Effect to handle session initialization or validation
@@ -167,5 +179,6 @@ export const useWorkflowSession = () => {
     setIsLoading,
     initialMessageSent,
     loadMessages,
+    createNewSession,
   };
 };

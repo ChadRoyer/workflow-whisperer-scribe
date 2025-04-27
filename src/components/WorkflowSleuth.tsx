@@ -28,6 +28,7 @@ export const WorkflowSleuth = () => {
     initialMessageSent,
     initializationError,
     loadMessages,
+    createNewSession
   } = useWorkflowSession();
 
   const { handleSendMessage, sendInitialMessage } = useWorkflowMessages({
@@ -82,6 +83,26 @@ export const WorkflowSleuth = () => {
     }
   };
 
+  const handleNewChat = async () => {
+    try {
+      // Clear current state
+      setMessages([]);
+      initialMessageSent.current = false;
+      
+      // Create a new session
+      await createNewSession();
+      
+      // The rest will be handled by the effects when sessionId changes
+    } catch (error) {
+      console.error("Error creating new chat:", error);
+      toast({
+        title: "Error",
+        description: "Failed to create a new chat. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -106,7 +127,8 @@ export const WorkflowSleuth = () => {
         <SidebarProvider>
           <ChatHistory 
             sessionId={sessionId} 
-            onSelectSession={handleSelectSession} 
+            onSelectSession={handleSelectSession}
+            onNewChat={handleNewChat} 
           />
         </SidebarProvider>
       </div>
