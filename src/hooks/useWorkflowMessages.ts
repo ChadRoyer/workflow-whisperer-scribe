@@ -86,7 +86,6 @@ export const useWorkflowMessages = ({
       return false;
     }
     
-    // Verify this session has no messages in the database before sending initial message
     const hasExistingMessages = await checkSessionHasMessages(sessionId);
     
     if (hasExistingMessages || hasMessages) {
@@ -113,7 +112,6 @@ export const useWorkflowMessages = ({
       return true;
     } else {
       console.error("Failed to send initial message");
-      // Add the message to the UI anyway so the user can interact
       setMessages([initialMessage]);
       toast({
         title: "Warning",
@@ -134,16 +132,9 @@ export const useWorkflowMessages = ({
       return;
     }
 
-    // Check if this is a new session with no messages
-    if (messages.length === 0 && !hasMessages) {
-      console.log("No messages in session, sending initial message first");
-      await sendInitialMessage();
-    }
-
     const userMessage = { text: message, isBot: false };
     const savedUserMessage = await saveMessage(userMessage);
     
-    // Add user message to UI even if saving fails
     const newUserMessage = savedUserMessage ? 
       { id: savedUserMessage.id, text: message, isBot: false, sessionId: savedUserMessage.session_id } : 
       userMessage;
@@ -176,7 +167,6 @@ export const useWorkflowMessages = ({
       const botMessage = { text: data.reply, isBot: true };
       const savedBotMessage = await saveMessage(botMessage);
       
-      // Add bot message to UI even if saving fails
       const newBotMessage = savedBotMessage ? 
         { id: savedBotMessage.id, text: data.reply, isBot: true, sessionId: savedBotMessage.session_id } : 
         botMessage;

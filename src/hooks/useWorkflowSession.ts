@@ -128,7 +128,6 @@ export const useWorkflowSession = (): WorkflowSessionReturn => {
     }
   };
 
-  // Check if there are messages for the current session
   const checkHasMessages = async (sid: string | null) => {
     if (!sid) return false;
     
@@ -150,7 +149,6 @@ export const useWorkflowSession = (): WorkflowSessionReturn => {
     }
   };
 
-  // Initialize session on mount and when user info changes
   useEffect(() => {
     if (userInfo) {
       initializeSession();
