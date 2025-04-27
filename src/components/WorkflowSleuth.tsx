@@ -30,7 +30,7 @@ export const WorkflowSleuth = () => {
     createNewSession
   } = useWorkflowSession();
 
-  const { handleSendMessage, sendInitialMessage } = useWorkflowMessages({
+  const { handleSendMessage } = useWorkflowMessages({
     sessionId,
     messages,
     setMessages,
@@ -39,18 +39,6 @@ export const WorkflowSleuth = () => {
   });
 
   useSessionTitle(sessionId, messages);
-
-  useEffect(() => {
-    if (sessionId && isInitialized && messages.length === 0 && !hasMessages) {
-      try {
-        console.log("Detected empty session, sending initial welcome message");
-        sendInitialMessage();
-      } catch (error) {
-        console.error("Error sending initial message:", error);
-        setRenderError("Failed to initialize chat. Please refresh the page.");
-      }
-    }
-  }, [sessionId, isInitialized, messages.length, hasMessages, sendInitialMessage]);
 
   const handleSelectSession = async (selectedSessionId: string) => {
     try {

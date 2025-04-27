@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
@@ -61,6 +62,15 @@ export const useWorkflowSession = (): WorkflowSessionReturn => {
           setSessionId(newSession.id);
           localStorage.setItem('workflowSleuthSessionId', newSession.id);
           setMessages([]);
+          
+          // Immediately seed the chat with initial message
+          await supabase.functions.invoke("workflow-sleuth", {
+            body: {
+              sessionId: newSession.id,
+              systemMessage: "seed"
+            }
+          });
+          
           setIsLoading(false);
         }
       }
