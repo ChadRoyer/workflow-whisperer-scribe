@@ -15,7 +15,7 @@ interface WorkflowMessagesProps {
   messages: Message[];
   setMessages: (messages: Message[]) => void;
   setIsLoading: (loading: boolean) => void;
-  initialMessageSent: React.MutableRefObject<boolean>;
+  hasMessages: boolean;
 }
 
 export const useWorkflowMessages = ({
@@ -23,7 +23,7 @@ export const useWorkflowMessages = ({
   messages,
   setMessages,
   setIsLoading,
-  initialMessageSent,
+  hasMessages,
 }: WorkflowMessagesProps) => {
   const saveMessage = async (message: Message, currentSessionId?: string) => {
     if (!currentSessionId && !sessionId) {
@@ -60,43 +60,42 @@ export const useWorkflowMessages = ({
     }
   };
 
+  const checkSessionHasMessages = useCallback(async (sid: string | null) => {
+    if (!sid) return false;
+    
+    try {
+      const { count, error } = await supabase
+        .from('chat_messages')
+        .select('id', { count: 'exact', head: true })
+        .eq('session_id', sid);
+      
+      if (error) {
+        console.error("Error checking for messages:", error);
+        return false;
+      }
+      
+      return count !== null && count > 0;
+    } catch (error) {
+      console.error("Error in checkSessionHasMessages:", error);
+      return false;
+    }
+  }, []);
+
   const sendInitialMessage = useCallback(async () => {
     if (!sessionId) {
       console.error("Cannot send initial message - no sessionId");
-      return;
+      return false;
     }
     
-    // Check existing messages in the database to avoid duplicating the intro
-    try {
-      const { data, error } = await supabase
-        .from('chat_messages')
-        .select('id')
-        .eq('session_id', sessionId)
-        .limit(1);
-      
-      if (error) {
-        console.error("Error checking for existing messages:", error);
-      }
-      
-      // If messages already exist, don't send the intro again
-      if (data && data.length > 0) {
-        console.log("Messages already exist for this session, skipping intro");
-        initialMessageSent.current = true;
-        return;
-      }
-    } catch (error) {
-      console.error("Error checking for messages:", error);
+    // Verify this session has no messages in the database before sending initial message
+    const hasExistingMessages = await checkSessionHasMessages(sessionId);
+    
+    if (hasExistingMessages || hasMessages) {
+      console.log("Session already has messages, skipping initial message");
+      return false;
     }
     
-    // Double-check that we haven't already sent the initial message
-    // or that there are no existing messages
-    if (initialMessageSent.current || messages.length > 0) {
-      console.log("Initial message already sent or messages exist, skipping");
-      initialMessageSent.current = true;
-      return;
-    }
-    
-    console.log("Sending initial message for session:", sessionId);
+    console.log("Sending initial message for empty session:", sessionId);
     
     const initialMessage = {
       text: "Hi! I'm WorkflowSleuth. We'll list key workflows and pain points so we can spot AI wins. Let's start with the first question: Where does value first ENTER the business in a typical week?",
@@ -112,19 +111,19 @@ export const useWorkflowMessages = ({
         isBot: true,
         sessionId: savedMessage.session_id
       }]);
-      initialMessageSent.current = true;
+      return true;
     } else {
       console.error("Failed to send initial message");
       // Add the message to the UI anyway so the user can interact
       setMessages([initialMessage]);
-      initialMessageSent.current = true;
       toast({
         title: "Warning",
         description: "The chat is working, but messages may not be saved properly.",
         variant: "default",
       });
+      return false;
     }
-  }, [sessionId, setMessages, initialMessageSent, messages.length]);
+  }, [sessionId, setMessages, hasMessages, checkSessionHasMessages]);
 
   const handleSendMessage = async (message: string) => {
     if (!sessionId) {
@@ -136,9 +135,9 @@ export const useWorkflowMessages = ({
       return;
     }
 
-    // Only send initial message if we have no messages yet and it hasn't been sent
-    if (messages.length === 0 && !initialMessageSent.current) {
-      console.log("Sending initial message before user message");
+    // Check if this is a new session with no messages
+    if (messages.length === 0 && !hasMessages) {
+      console.log("No messages in session, sending initial message first");
       await sendInitialMessage();
     }
 

@@ -16,19 +16,19 @@ export const WorkflowSleuth = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { userInfo } = useAuth();
   const [renderError, setRenderError] = useState<string | null>(null);
-  const [prevSessionId, setPrevSessionId] = useState<string | null>(null);
   
   const {
     sessionId,
     messages,
     isLoading,
     hasMessages,
+    isInitialized,
     setSessionId,
     setMessages,
     setIsLoading,
-    initialMessageSent,
     initializationError,
     loadMessages,
+    loadMessagesForSession,
     createNewSession
   } = useWorkflowSession();
 
@@ -37,43 +37,38 @@ export const WorkflowSleuth = () => {
     messages,
     setMessages,
     setIsLoading,
-    initialMessageSent,
+    hasMessages
   });
 
   useSessionTitle(sessionId, messages);
 
-  // Effect to detect session changes and ensure messages are loaded
+  // Send initial message if we have a new session with no messages
   useEffect(() => {
-    if (sessionId && sessionId !== prevSessionId) {
-      console.log(`Session changed from ${prevSessionId} to ${sessionId}, loading messages`);
-      setPrevSessionId(sessionId);
-      loadMessages();
-    }
-  }, [sessionId, prevSessionId, loadMessages]);
-
-  // Only send initial message for new sessions with no messages
-  useEffect(() => {
-    if (sessionId && messages.length === 0 && !initialMessageSent.current && !hasMessages) {
+    if (sessionId && isInitialized && messages.length === 0 && !hasMessages) {
       try {
-        console.log("Sending initial message for new empty session");
+        console.log("Detected empty session, sending initial welcome message");
         sendInitialMessage();
       } catch (error) {
-        console.error("Error in initial message effect:", error);
+        console.error("Error sending initial message:", error);
         setRenderError("Failed to initialize chat. Please refresh the page.");
       }
     }
-  }, [sessionId, messages.length, hasMessages, sendInitialMessage, initialMessageSent]);
+  }, [sessionId, isInitialized, messages.length, hasMessages, sendInitialMessage]);
 
   const handleSelectSession = async (selectedSessionId: string) => {
     try {
       if (selectedSessionId === sessionId) return;
       
+      setIsLoading(true);
+      
       // Clear messages temporarily while we load the new session
       setMessages([]);
-      initialMessageSent.current = false;
+      
+      // Update session ID which will be saved to localStorage
       setSessionId(selectedSessionId);
       
-      // Messages will be loaded in the effect above when sessionId changes
+      // Load messages for the selected session
+      await loadMessagesForSession(selectedSessionId);
     } catch (error) {
       console.error("Error selecting session:", error);
       toast({
@@ -81,19 +76,19 @@ export const WorkflowSleuth = () => {
         description: "Failed to select chat session. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleNewChat = async () => {
     try {
-      // Clear current state
-      setMessages([]);
-      initialMessageSent.current = false;
-      
-      // Create a new session
-      await createNewSession();
-      
-      // The rest will be handled by the effects when sessionId changes
+      const newSessionId = await createNewSession();
+      if (newSessionId) {
+        console.log("New chat created with sessionId:", newSessionId);
+        // The initialization effect will trigger the welcome message since
+        // this is a brand new session with no messages
+      }
     } catch (error) {
       console.error("Error creating new chat:", error);
       toast({
@@ -145,7 +140,9 @@ export const WorkflowSleuth = () => {
           )}
           {messages.length === 0 && !isLoading && !initializationError && !renderError ? (
             <div className="flex h-full items-center justify-center">
-              <p className="text-muted-foreground">Initializing chat for {userInfo.companyName}...</p>
+              <p className="text-muted-foreground">
+                {isInitialized ? "No messages yet" : "Initializing chat for " + userInfo.companyName + "..."}
+              </p>
             </div>
           ) : (
             messages.map((message, index) => (
