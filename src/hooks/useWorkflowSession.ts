@@ -15,63 +15,52 @@ export const useWorkflowSession = () => {
   const { userInfo } = useAuth();
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [initializationError, setInitializationError] = useState<string | null>(null);
-  const [isInitialized, setIsInitialized] = useState(false);
-  const [hasMessages, setHasMessages] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Initial setup - runs only once when component mounts
-  useEffect(() => {
-    const initializeSession = async () => {
-      try {
-        // Get session ID from localStorage
-        const storedSessionId = localStorage.getItem('workflowSleuthSessionId');
-        console.log("Initial load: checking for stored session ID:", storedSessionId);
-        
-        if (storedSessionId) {
-          // Validate the stored session ID
-          const { data: sessionData, error: sessionError } = await supabase
-            .from('sessions')
-            .select('id')
-            .eq('id', storedSessionId)
-            .single();
-          
-          if (!sessionError && sessionData) {
-            console.log("Found valid session:", storedSessionId);
-            setSessionId(storedSessionId);
-            await loadMessagesForSession(storedSessionId);
-            setIsInitialized(true);
-            return;
-          } else {
-            console.log("Stored session ID is invalid, removing from localStorage");
-            localStorage.removeItem('workflowSleuthSessionId');
-          }
+  const initializeSession = async () => {
+    try {
+      const storedSessionId = localStorage.getItem('workflowSleuthSessionId');
+      
+      // Validate existing session ID if present
+      if (storedSessionId) {
+        const { data: sessionData, error: sessionError } = await supabase
+          .from('sessions')
+          .select('id, company_name')
+          .eq('id', storedSessionId)
+          .single();
+
+        if (!sessionError && sessionData) {
+          // Valid existing session found
+          setSessionId(storedSessionId);
+          await loadMessagesForSession(storedSessionId);
+          setIsLoading(false);
+          return;
         }
-        
-        // If we reached here, we need to create a new session
-        if (userInfo) {
-          console.log("Creating new session for initial load");
-          await createNewSession();
-          setIsInitialized(true);
-        }
-      } catch (error) {
-        console.error("Error in session initialization:", error);
-        setInitializationError("Failed to initialize session. Please refresh the page.");
-        setIsInitialized(true);
       }
-    };
-    
-    if (!isInitialized && userInfo) {
-      initializeSession();
-    }
-  }, [userInfo, isInitialized]);
 
-  // Load messages for a specific session
+      // Create new session if no valid session exists
+      if (userInfo) {
+        const newSession = await createNewSession();
+        if (newSession) {
+          setSessionId(newSession.id);
+          localStorage.setItem('workflowSleuthSessionId', newSession.id);
+          setIsLoading(false);
+        }
+      }
+    } catch (error) {
+      console.error("Session initialization error:", error);
+      toast({
+        title: "Error",
+        description: "Failed to initialize session",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const loadMessagesForSession = async (id: string) => {
     try {
-      setIsLoading(true);
-      setInitializationError(null);
-      
       const { data, error } = await supabase
         .from('chat_messages')
         .select('*')
@@ -79,56 +68,26 @@ export const useWorkflowSession = () => {
         .order('created_at', { ascending: true });
 
       if (error) {
-        console.error("Error loading messages:", error);
-        setInitializationError("Failed to load messages");
-        setHasMessages(false);
-        return false;
+        console.error("Message loading error:", error);
+        return [];
       }
 
-      if (data && data.length > 0) {
-        const loadedMessages = data.map(msg => ({
-          id: msg.id,
-          text: msg.content,
-          isBot: msg.role === 'assistant',
-          sessionId: msg.session_id
-        }));
-        
-        setMessages(loadedMessages);
-        setHasMessages(true);
-        console.log(`Loaded ${loadedMessages.length} messages for session ${id}`);
-        return true;
-      } else {
-        setMessages([]);
-        setHasMessages(false);
-        console.log(`No messages found for session ${id}`);
-        return false;
-      }
+      return data ? data.map(msg => ({
+        id: msg.id,
+        text: msg.content,
+        isBot: msg.role === 'assistant',
+        sessionId: msg.session_id
+      })) : [];
     } catch (error) {
-      console.error("Error in loadMessagesForSession:", error);
-      setInitializationError("Failed to load messages");
-      return false;
-    } finally {
-      setIsLoading(false);
+      console.error("Unexpected error loading messages:", error);
+      return [];
     }
   };
 
-  // Create a brand new session
   const createNewSession = async () => {
-    try {
-      setIsLoading(true);
-      setInitializationError(null);
-      
-      if (!userInfo) {
-        console.log("No user info available, cannot create session");
-        return null;
-      }
-      
-      // Clear current state
-      setMessages([]);
-      setHasMessages(false);
-      
-      console.log("Creating new session with company name:", userInfo.companyName);
+    if (!userInfo) return null;
 
+    try {
       const { data, error } = await supabase
         .from('sessions')
         .insert({
@@ -140,52 +99,32 @@ export const useWorkflowSession = () => {
         .single();
 
       if (error) {
-        console.error("Error creating session:", error);
-        setInitializationError("Failed to create new session");
-        toast({
-          title: "Error",
-          description: "Failed to create a new session. Please try again.",
-          variant: "destructive",
-        });
+        console.error("Session creation error:", error);
         return null;
       }
 
-      if (data) {
-        const newSessionId = data.id;
-        console.log("Created new session with ID:", newSessionId);
-        localStorage.setItem('workflowSleuthSessionId', newSessionId);
-        setSessionId(newSessionId);
-        return newSessionId;
-      }
-      
-      return null;
+      return data;
     } catch (error) {
-      console.error("Error in createNewSession:", error);
-      setInitializationError("Failed to create new session");
+      console.error("Unexpected error creating session:", error);
       return null;
-    } finally {
-      setIsLoading(false);
     }
   };
 
-  // Load messages for current session
-  const loadMessages = async () => {
-    if (!sessionId) return false;
-    return loadMessagesForSession(sessionId);
-  };
+  // Initialize session on mount and when user info changes
+  useEffect(() => {
+    if (userInfo) {
+      initializeSession();
+    }
+  }, [userInfo]);
 
   return {
     sessionId,
     messages,
     isLoading,
-    initializationError,
-    hasMessages,
-    isInitialized,
     setSessionId,
     setMessages,
-    setIsLoading,
-    loadMessages,
     loadMessagesForSession,
     createNewSession,
+    initializeSession
   };
 };
