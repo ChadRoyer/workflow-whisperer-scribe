@@ -3,6 +3,8 @@ import React, { useEffect } from "react";
 import { useSessionManagement } from "./useSessionManagement";
 import { useSessionCleanup } from "./useSessionCleanup";
 import { ChatHistoryItem } from "./ChatHistoryItem";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
 
 interface ChatHistoryProps {
   sessionId: string | null;
@@ -17,10 +19,26 @@ export const ChatHistory = ({ sessionId, onSelectSession }: ChatHistoryProps) =>
     cleanupEmptySessions().then(() => fetchSessions());
   }, [sessionId, cleanupEmptySessions, fetchSessions]);
 
+  const handleNewChat = () => {
+    // Force reload to start a new chat
+    window.location.reload();
+  };
+
   return (
     <div className="h-full flex flex-col overflow-hidden">
       <div className="border-b p-4">
-        <h2 className="text-lg font-semibold">Chat History</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold">Chat History</h2>
+          <Button 
+            onClick={handleNewChat}
+            variant="outline" 
+            size="sm"
+            className="ml-2"
+          >
+            <Plus className="mr-1 h-4 w-4" />
+            New Chat
+          </Button>
+        </div>
       </div>
       <div className="flex-1 overflow-y-auto p-2 space-y-2">
         {isLoading ? (
