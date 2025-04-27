@@ -74,9 +74,6 @@ export const WorkflowSleuth = () => {
       setSessionId(newSession.id);
       localStorage.setItem('workflowSleuthSessionId', newSession.id);
       setMessages([]);
-      
-      await cleanupEmptySessions();
-      await fetchSessions();
     } catch (error) {
       console.error("Error creating new chat:", error);
       toast({
