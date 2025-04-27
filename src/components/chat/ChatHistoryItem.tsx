@@ -11,6 +11,7 @@ interface ChatHistoryItemProps {
   companyName: string;
   createdAt: string;
   isSelected: boolean;
+  empty?: boolean;
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
 }
@@ -21,6 +22,7 @@ export const ChatHistoryItem = ({
   companyName,
   createdAt,
   isSelected,
+  empty,
   onSelect,
   onDelete,
 }: ChatHistoryItemProps) => {
@@ -28,7 +30,8 @@ export const ChatHistoryItem = ({
     <div 
       className={cn(
         "flex justify-between items-center p-2 rounded-md hover:bg-accent cursor-pointer group",
-        isSelected && "bg-accent"
+        isSelected && "bg-accent",
+        empty && "opacity-50"
       )}
       onClick={() => onSelect(id)}
     >

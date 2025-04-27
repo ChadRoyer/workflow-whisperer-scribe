@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
@@ -8,6 +7,7 @@ interface Session {
   created_at: string;
   company_name: string;
   title: string | null;
+  empty?: boolean;
 }
 
 export const useSessionManagement = (currentSessionId: string | null) => {
@@ -39,17 +39,13 @@ export const useSessionManagement = (currentSessionId: string | null) => {
         return;
       }
 
-      // Filter out sessions without messages
-      const sessionsWithMessages = sessionsData
-        ?.filter(session => {
-          // message_count is an array of objects with count property
-          return Array.isArray(session.message_count) && 
-                 session.message_count.length > 0 && 
-                 session.message_count[0].count > 0;
-        })
-        .map(({ message_count, ...session }) => session) || [];
-
-      setSessions(sessionsWithMessages);
+      // Show everything; grey-out ones with 0 msgs so the user still sees the new room
+      setSessions(
+        sessionsData?.map(({ message_count, ...session }) => ({
+          ...session,
+          empty: !message_count?.[0]?.count
+        })) || []
+      );
     } catch (error) {
       console.error("Error in fetchSessions:", error);
       toast({
