@@ -47,6 +47,10 @@ export const useWorkflowMessages = ({
     setIsLoading(true);
 
     try {
+      // Create an AbortController with a 10-second timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+
       console.log("Calling workflow-sleuth function with:", {
         message,
         sessionId,
@@ -58,8 +62,12 @@ export const useWorkflowMessages = ({
           message,
           sessionId,
           messages: updatedMessages
-        }
+        },
+        signal: controller.signal // Add abort signal
       });
+
+      // Clear the timeout if the request completes before 10 seconds
+      clearTimeout(timeoutId);
 
       if (error) {
         throw new Error(error.message);
@@ -78,11 +86,21 @@ export const useWorkflowMessages = ({
 
     } catch (error) {
       console.error("Error calling edge function:", error);
-      toast({
-        title: "Error",
-        description: "Failed to process your message. Please try again.",
-        variant: "destructive",
-      });
+      
+      // Specific handling for abort errors
+      if (error.name === 'AbortError') {
+        toast({
+          title: "Timeout",
+          description: "The request took too long. Please try again.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to process your message. Please try again.",
+          variant: "destructive",
+        });
+      }
       
       const errorMessage = { 
         text: "I'm sorry, I encountered an error processing your message. Please try again.",
@@ -90,7 +108,7 @@ export const useWorkflowMessages = ({
       };
       await saveMessageToDatabase(errorMessage, sessionId);
       
-      setMessages([...updatedMessages, errorMessage]);
+      setMessages([...messages, errorMessage]);
     } finally {
       setIsLoading(false);
     }

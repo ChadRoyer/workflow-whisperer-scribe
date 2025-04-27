@@ -65,7 +65,7 @@ export type Database = {
       sessions: {
         Row: {
           company_name: string
-          created_at: string | null
+          created_at: string
           facilitator: string
           finished: boolean | null
           id: string
@@ -73,7 +73,7 @@ export type Database = {
         }
         Insert: {
           company_name: string
-          created_at?: string | null
+          created_at?: string
           facilitator: string
           finished?: boolean | null
           id?: string
@@ -81,7 +81,7 @@ export type Database = {
         }
         Update: {
           company_name?: string
-          created_at?: string | null
+          created_at?: string
           facilitator?: string
           finished?: boolean | null
           id?: string
