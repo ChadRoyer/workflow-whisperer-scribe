@@ -41,7 +41,12 @@ export const useSessionManagement = (currentSessionId: string | null) => {
 
       // Filter out sessions without messages
       const sessionsWithMessages = sessionsData
-        ?.filter(session => session.message_count > 0)
+        ?.filter(session => {
+          // message_count is an array of objects with count property
+          return Array.isArray(session.message_count) && 
+                 session.message_count.length > 0 && 
+                 session.message_count[0].count > 0;
+        })
         .map(({ message_count, ...session }) => session) || [];
 
       setSessions(sessionsWithMessages);
