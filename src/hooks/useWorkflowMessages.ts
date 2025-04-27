@@ -2,7 +2,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { saveMessageToDatabase } from "@/services/messages";
-import { useInitialMessage } from "./useInitialMessage";
 
 interface Message {
   id?: string;
@@ -26,8 +25,6 @@ export const useWorkflowMessages = ({
   setIsLoading,
   hasMessages,
 }: WorkflowMessagesProps) => {
-  const { sendInitialMessage } = useInitialMessage(sessionId, hasMessages, setMessages);
-
   const handleSendMessage = async (message: string) => {
     if (!sessionId) {
       toast({
@@ -101,6 +98,5 @@ export const useWorkflowMessages = ({
 
   return {
     handleSendMessage,
-    sendInitialMessage,
   };
 };
