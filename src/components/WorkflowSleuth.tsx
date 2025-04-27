@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
@@ -28,8 +29,12 @@ export const WorkflowSleuth = () => {
     setMessages,
     setIsLoading,
     loadMessagesForSession,
-    createNewSession
+    createNewSession,
+    initializeSession
   } = useWorkflowSession();
+
+  // Add useSessionTitle hook here - consistent hook order
+  useSessionTitle(sessionId, messages);
 
   const { handleSendMessage } = useWorkflowMessages({
     sessionId,
@@ -38,8 +43,6 @@ export const WorkflowSleuth = () => {
     setIsLoading,
     hasMessages
   });
-
-  useSessionTitle(sessionId, messages);
 
   const handleSelectSession = async (selectedSessionId: string) => {
     try {

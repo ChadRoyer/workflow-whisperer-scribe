@@ -104,7 +104,8 @@ export const useSessionManagement = (currentSessionId: string | null) => {
   // Fixed the realtime subscription TypeScript error
   useEffect(() => {
     // Create a channel for listening to session title updates
-    const channel = supabase.channel('session-titles')
+    const channel = supabase
+      .channel('session-titles')
       .on(
         'postgres_changes', 
         {
