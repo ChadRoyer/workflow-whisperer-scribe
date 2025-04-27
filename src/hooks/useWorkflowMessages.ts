@@ -47,9 +47,13 @@ export const useWorkflowMessages = ({
     setIsLoading(true);
 
     try {
-      // Create an AbortController with a 10-second timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      // Set up a timeout for the function call
+      let timeoutId: ReturnType<typeof setTimeout>;
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(() => {
+          reject(new Error('Request timeout after 10 seconds'));
+        }, 10000);
+      });
 
       console.log("Calling workflow-sleuth function with:", {
         message,
@@ -57,17 +61,25 @@ export const useWorkflowMessages = ({
         messages: updatedMessages
       });
       
-      const { data, error } = await supabase.functions.invoke('workflow-sleuth', {
+      // Race the function call against the timeout
+      const functionPromise = supabase.functions.invoke('workflow-sleuth', {
         body: {
           message,
           sessionId,
           messages: updatedMessages
-        },
-        signal: controller.signal // Add abort signal
+        }
       });
 
-      // Clear the timeout if the request completes before 10 seconds
-      clearTimeout(timeoutId);
+      // Use Promise.race to implement the timeout
+      const result = await Promise.race([
+        functionPromise,
+        timeoutPromise
+      ]);
+
+      // Clear the timeout since the promise resolved before the timeout
+      clearTimeout(timeoutId!);
+
+      const { data, error } = result as Awaited<typeof functionPromise>;
 
       if (error) {
         throw new Error(error.message);
@@ -87,8 +99,8 @@ export const useWorkflowMessages = ({
     } catch (error) {
       console.error("Error calling edge function:", error);
       
-      // Specific handling for abort errors
-      if (error.name === 'AbortError') {
+      // Check if it's a timeout error
+      if (error.message?.includes('timeout')) {
         toast({
           title: "Timeout",
           description: "The request took too long. Please try again.",
