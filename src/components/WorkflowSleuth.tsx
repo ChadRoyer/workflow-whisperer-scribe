@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
@@ -41,7 +40,6 @@ export const WorkflowSleuth = () => {
 
   useSessionTitle(sessionId, messages);
 
-  // Send initial message if we have a new session with no messages
   useEffect(() => {
     if (sessionId && isInitialized && messages.length === 0 && !hasMessages) {
       try {
@@ -60,13 +58,10 @@ export const WorkflowSleuth = () => {
       
       setIsLoading(true);
       
-      // Clear messages temporarily while we load the new session
       setMessages([]);
       
-      // Update session ID which will be saved to localStorage
       setSessionId(selectedSessionId);
       
-      // Load messages for the selected session
       const loadedMessages = await loadMessagesForSession(selectedSessionId);
       setMessages(loadedMessages || []);
     } catch (error) {
@@ -89,7 +84,6 @@ export const WorkflowSleuth = () => {
         setSessionId(newSession.id);
         localStorage.setItem('workflowSleuthSessionId', newSession.id);
         setMessages([]);
-        // The initialization effect will trigger the welcome message
       }
     } catch (error) {
       console.error("Error creating new chat:", error);
@@ -105,12 +99,10 @@ export const WorkflowSleuth = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  // Scroll to bottom whenever messages change
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
-  // If no user info is available yet, show a loading state
   if (!userInfo) {
     return (
       <div className="flex h-[80vh] w-full mx-auto items-center justify-center">
