@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
@@ -11,7 +10,22 @@ interface Message {
   sessionId?: string;
 }
 
-export const useWorkflowSession = () => {
+interface WorkflowSessionReturn {
+  sessionId: string | null;
+  messages: Message[];
+  isLoading: boolean;
+  hasMessages: boolean;
+  isInitialized: boolean;
+  initializationError: string | null;
+  setSessionId: (id: string | null) => void;
+  setMessages: (messages: Message[]) => void;
+  setIsLoading: (loading: boolean) => void;
+  loadMessagesForSession: (id: string) => Promise<Message[]>;
+  createNewSession: () => Promise<{ id: string } | null>;
+  initializeSession: () => Promise<void>;
+}
+
+export const useWorkflowSession = (): WorkflowSessionReturn => {
   const { userInfo } = useAuth();
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
