@@ -19,7 +19,13 @@ export const useSessionManagement = (currentSessionId: string | null) => {
     try {
       const { data: sessionsData, error: sessionsError } = await supabase
         .from('sessions')
-        .select('*')
+        .select(`
+          id,
+          created_at,
+          company_name,
+          title,
+          message_count:chat_messages(count)
+        `)
         .order('created_at', { ascending: false });
 
       if (sessionsError) {
@@ -33,29 +39,12 @@ export const useSessionManagement = (currentSessionId: string | null) => {
         return;
       }
 
-      if (!sessionsData || sessionsData.length === 0) {
-        setSessions([]);
-        setIsLoading(false);
-        return;
-      }
-
-      const sessionsWithMessages = await Promise.all(
-        sessionsData.map(async (session) => {
-          const { count, error } = await supabase
-            .from('chat_messages')
-            .select('id', { count: 'exact', head: true })
-            .eq('session_id', session.id);
-          
-          return {
-            ...session,
-            hasMessages: !error && count !== null && count > 0
-          };
-        })
-      );
-
       // Filter out sessions without messages
-      const filteredSessions = sessionsWithMessages.filter(session => session.hasMessages);
-      setSessions(filteredSessions);
+      const sessionsWithMessages = sessionsData
+        ?.filter(session => session.message_count > 0)
+        .map(({ message_count, ...session }) => session) || [];
+
+      setSessions(sessionsWithMessages);
     } catch (error) {
       console.error("Error in fetchSessions:", error);
       toast({
