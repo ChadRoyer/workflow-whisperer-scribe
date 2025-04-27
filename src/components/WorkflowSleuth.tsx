@@ -23,11 +23,10 @@ export const WorkflowSleuth = () => {
     isLoading,
     hasMessages,
     isInitialized,
+    initializationError,
     setSessionId,
     setMessages,
     setIsLoading,
-    initializationError,
-    loadMessages,
     loadMessagesForSession,
     createNewSession
   } = useWorkflowSession();
@@ -68,7 +67,8 @@ export const WorkflowSleuth = () => {
       setSessionId(selectedSessionId);
       
       // Load messages for the selected session
-      await loadMessagesForSession(selectedSessionId);
+      const loadedMessages = await loadMessagesForSession(selectedSessionId);
+      setMessages(loadedMessages || []);
     } catch (error) {
       console.error("Error selecting session:", error);
       toast({
@@ -83,11 +83,13 @@ export const WorkflowSleuth = () => {
 
   const handleNewChat = async () => {
     try {
-      const newSessionId = await createNewSession();
-      if (newSessionId) {
-        console.log("New chat created with sessionId:", newSessionId);
-        // The initialization effect will trigger the welcome message since
-        // this is a brand new session with no messages
+      const newSession = await createNewSession();
+      if (newSession) {
+        console.log("New chat created with sessionId:", newSession.id);
+        setSessionId(newSession.id);
+        localStorage.setItem('workflowSleuthSessionId', newSession.id);
+        setMessages([]);
+        // The initialization effect will trigger the welcome message
       }
     } catch (error) {
       console.error("Error creating new chat:", error);
