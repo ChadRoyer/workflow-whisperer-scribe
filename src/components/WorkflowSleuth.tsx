@@ -22,6 +22,7 @@ export const WorkflowSleuth = () => {
     sessionId,
     messages,
     isLoading,
+    hasMessages,
     setSessionId,
     setMessages,
     setIsLoading,
@@ -50,18 +51,18 @@ export const WorkflowSleuth = () => {
     }
   }, [sessionId, prevSessionId, loadMessages]);
 
-  // Simplify the initial message logic to avoid duplicates
+  // Only send initial message for new sessions with no messages
   useEffect(() => {
-    if (sessionId && messages.length === 0 && !initialMessageSent.current) {
+    if (sessionId && messages.length === 0 && !initialMessageSent.current && !hasMessages) {
       try {
-        console.log("Sending initial message for new session");
+        console.log("Sending initial message for new empty session");
         sendInitialMessage();
       } catch (error) {
         console.error("Error in initial message effect:", error);
         setRenderError("Failed to initialize chat. Please refresh the page.");
       }
     }
-  }, [sessionId, messages.length, sendInitialMessage, initialMessageSent]);
+  }, [sessionId, messages.length, hasMessages, sendInitialMessage, initialMessageSent]);
 
   const handleSelectSession = async (selectedSessionId: string) => {
     try {
@@ -72,7 +73,7 @@ export const WorkflowSleuth = () => {
       initialMessageSent.current = false;
       setSessionId(selectedSessionId);
       
-      // We'll load messages in the effect above when sessionId changes
+      // Messages will be loaded in the effect above when sessionId changes
     } catch (error) {
       console.error("Error selecting session:", error);
       toast({

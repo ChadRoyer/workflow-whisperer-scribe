@@ -22,6 +22,7 @@ export const useWorkflowSession = () => {
   const hasInitialized = useRef(false);
   const initialMessageSent = useRef(false);
   const lastLoadedSessionId = useRef<string | null>(null);
+  const [hasMessages, setHasMessages] = useState(false);
 
   const validateAndLoadSession = async () => {
     if (!sessionId) return;
@@ -39,6 +40,7 @@ export const useWorkflowSession = () => {
         localStorage.removeItem('workflowSleuthSessionId');
         setSessionId(null);
         setMessages([]);
+        setHasMessages(false);
         hasInitialized.current = false;
         initialMessageSent.current = false;
         return;
@@ -83,11 +85,13 @@ export const useWorkflowSession = () => {
           sessionId: msg.session_id
         }));
         setMessages(loadedMessages);
+        setHasMessages(true);
         initialMessageSent.current = true;
         lastLoadedSessionId.current = sessionId;
         console.log("Loaded messages:", loadedMessages.length);
       } else {
         setMessages([]);
+        setHasMessages(false);
         initialMessageSent.current = false;
         console.log("No messages found for session:", sessionId);
       }
@@ -107,6 +111,7 @@ export const useWorkflowSession = () => {
       
       // Reset state before creating new session
       setMessages([]);
+      setHasMessages(false);
       initialMessageSent.current = false;
       lastLoadedSessionId.current = null;
       
@@ -174,6 +179,7 @@ export const useWorkflowSession = () => {
     messages,
     isLoading,
     initializationError,
+    hasMessages,
     setSessionId,
     setMessages,
     setIsLoading,

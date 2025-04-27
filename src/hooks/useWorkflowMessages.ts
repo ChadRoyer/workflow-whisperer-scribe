@@ -66,6 +66,28 @@ export const useWorkflowMessages = ({
       return;
     }
     
+    // Check existing messages in the database to avoid duplicating the intro
+    try {
+      const { data, error } = await supabase
+        .from('chat_messages')
+        .select('id')
+        .eq('session_id', sessionId)
+        .limit(1);
+      
+      if (error) {
+        console.error("Error checking for existing messages:", error);
+      }
+      
+      // If messages already exist, don't send the intro again
+      if (data && data.length > 0) {
+        console.log("Messages already exist for this session, skipping intro");
+        initialMessageSent.current = true;
+        return;
+      }
+    } catch (error) {
+      console.error("Error checking for messages:", error);
+    }
+    
     // Double-check that we haven't already sent the initial message
     // or that there are no existing messages
     if (initialMessageSent.current || messages.length > 0) {
@@ -103,9 +125,6 @@ export const useWorkflowMessages = ({
       });
     }
   }, [sessionId, setMessages, initialMessageSent, messages.length]);
-
-  // Remove the useEffect that was calling sendInitialMessage
-  // This was causing duplicate initial messages
 
   const handleSendMessage = async (message: string) => {
     if (!sessionId) {
