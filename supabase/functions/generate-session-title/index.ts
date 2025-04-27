@@ -19,10 +19,8 @@ serve(async (req) => {
   }
 
   try {
-    // Parse request body
     const { sessionId, messages } = await req.json();
 
-    // Validate inputs
     if (!sessionId || !messages || messages.length === 0) {
       return new Response(JSON.stringify({ error: 'Invalid input' }), {
         status: 400,
@@ -30,8 +28,10 @@ serve(async (req) => {
       });
     }
 
-    // Filter to only include user messages
-    const userMessages = messages.filter((msg: any) => msg.role === 'user');
+    // Filter to only include user messages and take the first 5
+    const userMessages = messages
+      .filter((msg: any) => msg.role === 'user')
+      .slice(0, 5);
 
     if (userMessages.length === 0) {
       return new Response(JSON.stringify({ error: 'No user messages found' }), {
@@ -40,13 +40,23 @@ serve(async (req) => {
       });
     }
 
-    // Create a system prompt to generate an intuitive title
+    // Create a system prompt focused on workflow identification
     const titleGenerationPrompt = `
-      Generate a concise, descriptive title (max 30 characters) based on the context of these user messages.
-      Focus on identifying the key workflow, process, or topic being discussed.
+      Based on these initial user messages from a workflow discovery conversation, 
+      identify and name the specific business workflow or process being discussed.
+      Generate a concise 2-3 word title (max 30 characters) that describes the workflow.
+      Focus on the business process, not the conversation topic.
+      
+      Example good titles:
+      - "Invoice Processing"
+      - "Employee Onboarding"
+      - "Order Fulfillment"
+      - "Expense Approval"
       
       User Messages:
       ${userMessages.map((msg: any) => msg.text).join('\n')}
+      
+      Provide only the 2-3 word workflow title, nothing else.
     `;
 
     // Call OpenAI to generate title
@@ -61,7 +71,7 @@ serve(async (req) => {
         messages: [
           { 
             role: 'system', 
-            content: 'You are an assistant that generates concise titles based on user messages. Focus on the main topic or workflow being discussed.' 
+            content: 'You are a workflow analyst that identifies and names business processes based on conversation context. You only respond with 2-3 word workflow titles.' 
           },
           { 
             role: 'user', 
