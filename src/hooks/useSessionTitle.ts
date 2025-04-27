@@ -1,5 +1,5 @@
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 
 interface Message {
@@ -10,9 +10,15 @@ interface Message {
 }
 
 export const useSessionTitle = (sessionId: string | null, messages: Message[]) => {
+  const titleGenerated = useRef(false);
+
   useEffect(() => {
     if (messages.length >= 3 && sessionId) {
-      generateSessionTitle();
+      // only fire once
+      if (!titleGenerated.current) {
+        titleGenerated.current = true;
+        generateSessionTitle();
+      }
     }
   }, [messages, sessionId]);
 
