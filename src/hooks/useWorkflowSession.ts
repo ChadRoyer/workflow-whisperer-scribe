@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
@@ -20,6 +21,7 @@ export const useWorkflowSession = () => {
   const [initializationError, setInitializationError] = useState<string | null>(null);
   const hasInitialized = useRef(false);
   const initialMessageSent = useRef(false);
+  const lastLoadedSessionId = useRef<string | null>(null);
 
   const validateAndLoadSession = async () => {
     if (!sessionId) return;
@@ -52,7 +54,14 @@ export const useWorkflowSession = () => {
   const loadMessages = async () => {
     if (!sessionId) return;
 
+    // If we've already loaded this session and have messages, don't reload
+    if (lastLoadedSessionId.current === sessionId && messages.length > 0) {
+      console.log("Session already loaded with messages, skipping reload");
+      return;
+    }
+
     try {
+      console.log("Loading messages for session:", sessionId);
       setInitializationError(null);
       const { data, error } = await supabase
         .from('chat_messages')
@@ -75,10 +84,12 @@ export const useWorkflowSession = () => {
         }));
         setMessages(loadedMessages);
         initialMessageSent.current = true;
-        console.log("Loaded messages:", loadedMessages);
+        lastLoadedSessionId.current = sessionId;
+        console.log("Loaded messages:", loadedMessages.length);
       } else {
         setMessages([]);
         initialMessageSent.current = false;
+        console.log("No messages found for session:", sessionId);
       }
     } catch (error) {
       console.error("Error in loadMessages:", error);
@@ -124,6 +135,7 @@ export const useWorkflowSession = () => {
         setSessionId(newSessionId);
         setMessages([]);
         initialMessageSent.current = false;
+        lastLoadedSessionId.current = newSessionId;
       }
     } catch (error) {
       console.error("Error in initializeSession:", error);
@@ -131,10 +143,11 @@ export const useWorkflowSession = () => {
     }
   };
 
+  // Effect to handle session initialization or validation
   useEffect(() => {
     if (sessionId) {
       localStorage.setItem('workflowSleuthSessionId', sessionId);
-      if (!hasInitialized.current) {
+      if (!hasInitialized.current || lastLoadedSessionId.current !== sessionId) {
         validateAndLoadSession();
         hasInitialized.current = true;
       }

@@ -53,6 +53,7 @@ export const useSessionManagement = (currentSessionId: string | null) => {
         })
       );
 
+      // Filter out sessions without messages
       const filteredSessions = sessionsWithMessages.filter(session => session.hasMessages);
       setSessions(filteredSessions);
     } catch (error) {

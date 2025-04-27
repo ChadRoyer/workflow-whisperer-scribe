@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
-import { ChatHistory } from "./ChatHistory";
+import { ChatHistory } from "./chat/ChatHistory";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { useWorkflowSession } from "@/hooks/useWorkflowSession";
 import { useWorkflowMessages } from "@/hooks/useWorkflowMessages";
@@ -16,6 +16,7 @@ export const WorkflowSleuth = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { userInfo } = useAuth();
   const [renderError, setRenderError] = useState<string | null>(null);
+  const [prevSessionId, setPrevSessionId] = useState<string | null>(null);
   
   const {
     sessionId,
@@ -39,6 +40,15 @@ export const WorkflowSleuth = () => {
 
   useSessionTitle(sessionId, messages);
 
+  // Effect to detect session changes and ensure messages are loaded
+  useEffect(() => {
+    if (sessionId && sessionId !== prevSessionId) {
+      console.log(`Session changed from ${prevSessionId} to ${sessionId}, loading messages`);
+      setPrevSessionId(sessionId);
+      loadMessages();
+    }
+  }, [sessionId, prevSessionId, loadMessages]);
+
   // Simplify the initial message logic to avoid duplicates
   useEffect(() => {
     if (sessionId && messages.length === 0 && !initialMessageSent.current) {
@@ -55,9 +65,13 @@ export const WorkflowSleuth = () => {
   const handleSelectSession = async (selectedSessionId: string) => {
     try {
       if (selectedSessionId === sessionId) return;
+      
+      // Clear messages temporarily while we load the new session
       setMessages([]);
       initialMessageSent.current = false;
       setSessionId(selectedSessionId);
+      
+      // We'll load messages in the effect above when sessionId changes
     } catch (error) {
       console.error("Error selecting session:", error);
       toast({
