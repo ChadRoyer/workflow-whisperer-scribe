@@ -15,6 +15,7 @@ export const WorkflowSleuth = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { userInfo } = useAuth();
   const [renderError, setRenderError] = useState<string | null>(null);
+  const [isCreatingNewChat, setIsCreatingNewChat] = useState(false);
   
   const {
     sessionId,
@@ -66,13 +67,16 @@ export const WorkflowSleuth = () => {
 
   const handleNewChat = async () => {
     try {
+      setIsCreatingNewChat(true);
       const newSession = await createNewSession();
-      if (newSession) {
-        console.log("New chat created with sessionId:", newSession.id);
-        setSessionId(newSession.id);
-        localStorage.setItem('workflowSleuthSessionId', newSession.id);
-        setMessages([]);
-      }
+      if (!newSession) return;
+      
+      setSessionId(newSession.id);
+      localStorage.setItem('workflowSleuthSessionId', newSession.id);
+      setMessages([]);
+      
+      await cleanupEmptySessions();
+      await fetchSessions();
     } catch (error) {
       console.error("Error creating new chat:", error);
       toast({
@@ -80,6 +84,8 @@ export const WorkflowSleuth = () => {
         description: "Failed to create a new chat. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsCreatingNewChat(false);
     }
   };
 
@@ -106,7 +112,8 @@ export const WorkflowSleuth = () => {
           <ChatHistory 
             sessionId={sessionId} 
             onSelectSession={handleSelectSession}
-            onNewChat={handleNewChat} 
+            onNewChat={handleNewChat}
+            isCreatingNewChat={isCreatingNewChat}
           />
         </SidebarProvider>
       </div>

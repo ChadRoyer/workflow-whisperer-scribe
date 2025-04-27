@@ -10,9 +10,15 @@ interface ChatHistoryProps {
   sessionId: string | null;
   onSelectSession: (sessionId: string) => void;
   onNewChat: () => void;
+  isCreatingNewChat: boolean;
 }
 
-export const ChatHistory = ({ sessionId, onSelectSession, onNewChat }: ChatHistoryProps) => {
+export const ChatHistory = ({ 
+  sessionId, 
+  onSelectSession, 
+  onNewChat,
+  isCreatingNewChat 
+}: ChatHistoryProps) => {
   const { sessions, isLoading, fetchSessions, deleteSession } = useSessionManagement(sessionId);
   const { cleanupEmptySessions } = useSessionCleanup();
 
@@ -30,6 +36,7 @@ export const ChatHistory = ({ sessionId, onSelectSession, onNewChat }: ChatHisto
             variant="outline" 
             size="sm"
             className="ml-2"
+            disabled={isLoading || isCreatingNewChat}
           >
             <Plus className="mr-1 h-4 w-4" />
             New Chat
