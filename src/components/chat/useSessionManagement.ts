@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
@@ -102,15 +103,14 @@ export const useSessionManagement = (currentSessionId: string | null) => {
 
   // Realtime subscription to session title updates
   useEffect(() => {
-    const channel = supabase
-      .channel("session-titles")
+    const channel = supabase.channel('session-titles')
       .on(
-        "postgres_changes",
-        { 
-          event: "UPDATE", 
-          schema: "public", 
-          table: "sessions", 
-          columns: ["title"] 
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'sessions',
+          columns: ['title']
         },
         (payload) => {
           setSessions(currentSessions =>
