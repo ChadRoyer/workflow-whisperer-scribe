@@ -42,33 +42,7 @@ export const useWorkflowSession = () => {
         return;
       }
       
-      const { data: messagesData, error: messagesError, count } = await supabase
-        .from('chat_messages')
-        .select('*', { count: 'exact' })
-        .eq('session_id', sessionId)
-        .order('created_at', { ascending: true });
-      
-      if (messagesError) {
-        console.error("Error checking messages:", messagesError);
-        return;
-      }
-      
-      if (count && count > 0 && messagesData) {
-        const loadedMessages = messagesData.map(msg => ({
-          id: msg.id,
-          text: msg.content,
-          isBot: msg.role === 'assistant',
-          sessionId: msg.session_id
-        }));
-        
-        setMessages(loadedMessages);
-        initialMessageSent.current = true;
-        console.log(`Loaded ${loadedMessages.length} messages for existing session`);
-      } else {
-        console.log("No messages found for this session, will send initial message when needed");
-        setMessages([]);
-        initialMessageSent.current = false;
-      }
+      await loadMessages();
     } catch (error) {
       console.error("Error in validateAndLoadSession:", error);
       setInitializationError("Failed to validate session");
