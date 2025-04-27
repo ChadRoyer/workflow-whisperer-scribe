@@ -66,8 +66,11 @@ export const useWorkflowMessages = ({
       return;
     }
     
-    if (initialMessageSent.current) {
-      console.log("Initial message already sent");
+    // Double-check that we haven't already sent the initial message
+    // or that there are no existing messages
+    if (initialMessageSent.current || messages.length > 0) {
+      console.log("Initial message already sent or messages exist, skipping");
+      initialMessageSent.current = true;
       return;
     }
     
@@ -99,15 +102,10 @@ export const useWorkflowMessages = ({
         variant: "default",
       });
     }
-  }, [sessionId, setMessages, initialMessageSent]);
+  }, [sessionId, setMessages, initialMessageSent, messages.length]);
 
-  // Add a useEffect to check if we need to send the initial message
-  useEffect(() => {
-    if (sessionId && !initialMessageSent.current && messages.length === 0) {
-      console.log("Attempting to send initial message");
-      sendInitialMessage();
-    }
-  }, [sessionId, messages.length, sendInitialMessage, initialMessageSent]);
+  // Remove the useEffect that was calling sendInitialMessage
+  // This was causing duplicate initial messages
 
   const handleSendMessage = async (message: string) => {
     if (!sessionId) {
@@ -119,7 +117,8 @@ export const useWorkflowMessages = ({
       return;
     }
 
-    if (!initialMessageSent.current) {
+    // Only send initial message if we have no messages yet and it hasn't been sent
+    if (messages.length === 0 && !initialMessageSent.current) {
       console.log("Sending initial message before user message");
       await sendInitialMessage();
     }

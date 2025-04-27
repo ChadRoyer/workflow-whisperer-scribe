@@ -39,18 +39,18 @@ export const WorkflowSleuth = () => {
 
   useSessionTitle(sessionId, messages);
 
-  // Force initial message when component mounts if we have a session
+  // Simplify the initial message logic to avoid duplicates
   useEffect(() => {
-    try {
-      if (sessionId && messages.length === 0 && !initialMessageSent.current) {
-        console.log("WorkflowSleuth component mounted - sending initial message", { sessionId });
+    if (sessionId && messages.length === 0 && !initialMessageSent.current) {
+      try {
+        console.log("Sending initial message for new session");
         sendInitialMessage();
+      } catch (error) {
+        console.error("Error in initial message effect:", error);
+        setRenderError("Failed to initialize chat. Please refresh the page.");
       }
-    } catch (error) {
-      console.error("Error in initial message effect:", error);
-      setRenderError("Failed to initialize chat. Please refresh the page.");
     }
-  }, [sessionId, messages.length, sendInitialMessage]);
+  }, [sessionId, messages.length, sendInitialMessage, initialMessageSent]);
 
   const handleSelectSession = async (selectedSessionId: string) => {
     try {

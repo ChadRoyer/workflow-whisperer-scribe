@@ -38,23 +38,34 @@ export const useWorkflowSession = () => {
         setSessionId(null);
         setMessages([]);
         hasInitialized.current = false;
+        initialMessageSent.current = false;
         return;
       }
       
-      const { count, error: countError } = await supabase
+      const { data: messagesData, error: messagesError, count } = await supabase
         .from('chat_messages')
-        .select('id', { count: 'exact', head: true })
-        .eq('session_id', sessionId);
+        .select('*', { count: 'exact' })
+        .eq('session_id', sessionId)
+        .order('created_at', { ascending: true });
       
-      if (countError) {
-        console.error("Error checking messages count:", countError);
+      if (messagesError) {
+        console.error("Error checking messages:", messagesError);
         return;
       }
       
-      if (count && count > 0) {
-        loadMessages();
+      if (count && count > 0 && messagesData) {
+        const loadedMessages = messagesData.map(msg => ({
+          id: msg.id,
+          text: msg.content,
+          isBot: msg.role === 'assistant',
+          sessionId: msg.session_id
+        }));
+        
+        setMessages(loadedMessages);
+        initialMessageSent.current = true;
+        console.log(`Loaded ${loadedMessages.length} messages for existing session`);
       } else {
-        console.log("No messages found for this session, sending initial message");
+        console.log("No messages found for this session, will send initial message when needed");
         setMessages([]);
         initialMessageSent.current = false;
       }
@@ -149,7 +160,10 @@ export const useWorkflowSession = () => {
   useEffect(() => {
     if (sessionId) {
       localStorage.setItem('workflowSleuthSessionId', sessionId);
-      validateAndLoadSession();
+      if (!hasInitialized.current) {
+        validateAndLoadSession();
+        hasInitialized.current = true;
+      }
     } else if (!hasInitialized.current && userInfo) {
       initializeSession();
       hasInitialized.current = true;
