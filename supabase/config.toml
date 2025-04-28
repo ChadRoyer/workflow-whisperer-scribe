@@ -3,3 +3,6 @@ project_id = "jqrgqevteccqxnrmocuw"
 
 [functions.workflow-sleuth]
 verify_jwt = false
+
+[functions.generate-workflow-mermaid]
+verify_jwt = false
