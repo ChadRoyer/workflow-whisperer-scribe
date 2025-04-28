@@ -94,9 +94,12 @@ serve(async (req) => {
         console.error("Error counting workflows:", countError);
       }
 
+      // Updated visualization logic
       if (message.toLowerCase().includes('yes') && 
           messages[messages.length - 2]?.text?.includes('would you like to see a visual diagram')) {
         try {
+          console.log(`Generating visualization for workflow: ${functionArgs.title}`);
+          
           const visualizationResponse = await fetch(
             `https://jqrgqevteccqxnrmocuw.supabase.co/functions/v1/generate-workflow-mermaid`,
             {
@@ -108,11 +111,23 @@ serve(async (req) => {
               body: JSON.stringify({ workflowTitle: functionArgs.title })
             }
           );
+
+          if (!visualizationResponse.ok) {
+            throw new Error(`Visualization request failed with status: ${visualizationResponse.status}`);
+          }
           
           const visualData = await visualizationResponse.json();
+          
+          if (visualData.error) {
+            console.error("Visualization error:", visualData.error);
+            throw new Error(visualData.error);
+          }
+          
+          console.log("Successfully generated Mermaid diagram");
+          
           return new Response(
             JSON.stringify({ 
-              reply: visualData.mermaidChart || visualData.error,
+              reply: visualData.mermaidChart,
               addedWorkflow: workflowData ? workflowData[0] : null,
               workflowCount: count
             }), 
