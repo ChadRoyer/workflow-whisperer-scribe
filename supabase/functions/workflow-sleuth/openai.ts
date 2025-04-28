@@ -29,7 +29,7 @@ export async function handleOpenAITest(openAIApiKey: string) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o',  // Updated to use correct model name
+        model: 'gpt-4.1',  // Updated to use GPT-4.1 model
         messages: [
           { role: 'system', content: 'You are a helpful assistant.' },
           { role: 'user', content: 'Say hello in a creative way.' }
@@ -84,7 +84,7 @@ export async function processWorkflowChat(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: "gpt-4o",  // Updated to use correct model name
+      model: "gpt-4.1",  // Using GPT-4.1 model as requested
       messages,
       functions: [functionDefinition],
       function_call: "auto",
