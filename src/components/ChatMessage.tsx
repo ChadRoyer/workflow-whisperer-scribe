@@ -13,7 +13,7 @@ export const ChatMessage = ({ isBot, message }: ChatMessageProps) => {
 
   useEffect(() => {
     const renderMermaidDiagram = async () => {
-      if (mermaidRef.current && isMermaidDiagram) {
+      if (mermaidRef.current && message && isMermaidDiagram) {
         try {
           // Initialize mermaid with desired configuration
           mermaid.initialize({ 
@@ -44,17 +44,21 @@ export const ChatMessage = ({ isBot, message }: ChatMessageProps) => {
           if (mermaidRef.current) {
             mermaidRef.current.innerHTML = `<div class="p-2 border border-red-300 bg-red-50 text-red-800 rounded">
               Error rendering diagram: ${(error as Error).message || 'Unknown error'}
-            </div>`;
+            </div>
+            <pre class="p-2 mt-2 text-xs bg-gray-100 overflow-auto rounded">${message}</pre>`;
           }
         }
       }
     };
 
-    renderMermaidDiagram();
+    // Only attempt to render if we have a message
+    if (message) {
+      renderMermaidDiagram();
+    }
   }, [message]);
 
   // Updated detection for Mermaid diagrams to match all common patterns
-  const isMermaidDiagram = /^\s*(graph|flowchart|subgraph|sequenceDiagram|classDiagram|stateDiagram|gantt|pie|erDiagram)/i.test(message.trim());
+  const isMermaidDiagram = message ? /^\s*(graph|flowchart|sequenceDiagram|classDiagram|stateDiagram|gantt|pie|erDiagram|gitGraph|journey|mindmap)/i.test(message.trim()) : false;
 
   return (
     <div
@@ -70,7 +74,7 @@ export const ChatMessage = ({ isBot, message }: ChatMessageProps) => {
         )}
       >
         {isMermaidDiagram ? (
-          <div ref={mermaidRef} className="mermaid-diagram overflow-auto max-w-full" />
+          <div ref={mermaidRef} className="mermaid-diagram overflow-auto max-w-full w-full" />
         ) : (
           <p className="whitespace-pre-wrap">{message}</p>
         )}
