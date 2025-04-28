@@ -1,60 +1,56 @@
 
 import { useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/components/ui/use-toast";
 
 export const useSessionCleanup = () => {
   const cleanupEmptySessions = useCallback(async () => {
     try {
-      const { data: allSessions, error: sessionsError } = await supabase
+      // Find sessions with no messages except sessions created in the last 2 minutes
+      const twoMinutesAgo = new Date();
+      twoMinutesAgo.setMinutes(twoMinutesAgo.getMinutes() - 2);
+      
+      // First, find sessions with no messages
+      const { data: emptySessions, error: findError } = await supabase
         .from('sessions')
-        .select('id');
-      
-      if (sessionsError) {
-        console.error("Error getting all sessions:", sessionsError);
+        .select('id, created_at')
+        .not('created_at', 'gt', twoMinutesAgo.toISOString()) // Exclude recently created sessions
+        .not('id', 'in', (
+          supabase
+            .from('chat_messages')
+            .select('session_id')
+            .then(({ data }) => data?.map(m => m.session_id) || [])
+        ));
+        
+      if (findError) {
+        console.error("Error finding empty sessions:", findError);
         return;
       }
       
-      if (!allSessions || allSessions.length === 0) {
+      if (!emptySessions || emptySessions.length === 0) {
         return;
       }
       
-      const { data: messagesData, error: messagesError } = await supabase
-        .from('chat_messages')
-        .select('session_id')
-        .not('session_id', 'is', null);
-      
-      if (messagesError) {
-        console.error("Error getting sessions with messages:", messagesError);
-        return;
-      }
-      
-      const sessionIdsWithMessages = messagesData 
-        ? [...new Set(messagesData.map(msg => msg.session_id))]
-        : [];
-      
-      const emptySessionIds = allSessions
-        .map(session => session.id)
-        .filter(id => !sessionIdsWithMessages.includes(id));
-      
-      if (emptySessionIds.length === 0) {
-        return;
-      }
-      
-      const { error: deleteError } = await supabase
+      // Delete the empty sessions
+      const { error: deleteError, count } = await supabase
         .from('sessions')
         .delete()
-        .in('id', emptySessionIds);
-      
+        .in('id', emptySessions.map(s => s.id))
+        .select();
+        
       if (deleteError) {
         console.error("Error deleting empty sessions:", deleteError);
       } else {
-        console.log(`Cleaned up ${emptySessionIds.length} empty sessions`);
+        console.log(`Cleaned up ${count} empty sessions`);
       }
+      
+      return count;
     } catch (error) {
       console.error("Error in cleanupEmptySessions:", error);
+      return 0;
     }
   }, []);
-
-  return { cleanupEmptySessions };
+  
+  return {
+    cleanupEmptySessions
+  };
 };

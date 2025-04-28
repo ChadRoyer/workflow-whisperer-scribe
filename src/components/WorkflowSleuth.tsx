@@ -79,6 +79,9 @@ export const WorkflowSleuth = () => {
       localStorage.setItem('workflowSleuthSessionId', newSession.id);
       setMessages([]);
       
+      // Call initializeSession to properly set up the welcome message
+      await initializeSession();
+      
       // Refresh sessions list immediately after creating new chat
       await fetchSessions();
     } catch (error) {

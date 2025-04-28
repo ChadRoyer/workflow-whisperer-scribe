@@ -90,6 +90,17 @@ export const useWorkflowSession = (): WorkflowSessionReturn => {
               console.error('Error seeding initial message:', messageError);
             } else {
               console.log('Successfully added welcome message:', messageData);
+              
+              // Add the welcome message to our state directly
+              if (messageData && messageData.length > 0) {
+                const formattedMessage = {
+                  id: messageData[0].id,
+                  text: messageData[0].content,
+                  isBot: true,
+                  sessionId: messageData[0].session_id
+                };
+                setMessages([formattedMessage]);
+              }
             }
           }
         } catch (error) {
@@ -97,9 +108,12 @@ export const useWorkflowSession = (): WorkflowSessionReturn => {
           // Continue despite the error
         }
         
-        // Fetch the messages after adding welcome message
-        const loadedMessages = await loadMessagesForSession(newSession.id);
-        setMessages(loadedMessages || []);
+        // If we didn't add the message through the direct state update above,
+        // fetch the messages from the database
+        if (messages.length === 0) {
+          const loadedMessages = await loadMessagesForSession(newSession.id);
+          setMessages(loadedMessages || []);
+        }
       }
     } catch (error) {
       console.error("Session initialization error:", error);

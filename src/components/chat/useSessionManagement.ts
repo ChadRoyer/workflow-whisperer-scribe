@@ -39,11 +39,11 @@ export const useSessionManagement = (currentSessionId: string | null) => {
         return;
       }
 
-      // Show everything; grey-out ones with 0 msgs so the user still sees the new room
+      // Show everything - include empty sessions in list
       setSessions(
         sessionsData?.map(({ message_count, ...session }) => ({
           ...session,
-          empty: !message_count?.[0]?.count
+          empty: message_count?.[0]?.count ? false : true
         })) || []
       );
     } catch (error) {
@@ -128,6 +128,10 @@ export const useSessionManagement = (currentSessionId: string | null) => {
       supabase.removeChannel(channel);
     };
   }, []);
+
+  useEffect(() => {
+    fetchSessions();
+  }, [currentSessionId, fetchSessions]);
 
   return {
     sessions,
