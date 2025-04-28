@@ -143,6 +143,7 @@ serve(async (req) => {
             ? "Now that we've captured quite a few workflows, would you like to continue or are you DONE for now?"
             : "Shall we document another workflow, or are you DONE for now?";
 
+          // Insert the follow-up question
           const { error: followUpError } = await supabase
             .from('chat_messages')
             .insert({
@@ -155,6 +156,7 @@ serve(async (req) => {
             console.error("Error saving follow-up message:", followUpError);
           }
 
+          // Return both the diagram and follow-up question
           return new Response(
             JSON.stringify({ 
               reply: visualData.mermaidChart,

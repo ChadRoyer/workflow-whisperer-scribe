@@ -19,7 +19,8 @@ export const ChatMessage = ({ isBot, message }: ChatMessageProps) => {
           mermaid.initialize({ 
             startOnLoad: true,
             theme: 'default',
-            securityLevel: 'loose'
+            securityLevel: 'loose',
+            logLevel: 5 // Add more verbose logging
           });
           
           // Clear previous content
@@ -28,11 +29,14 @@ export const ChatMessage = ({ isBot, message }: ChatMessageProps) => {
           // Create a unique ID for this diagram
           const id = `mermaid-${Date.now()}`;
           
+          console.log('Attempting to render Mermaid diagram with content:', message);
+          
           // Render the diagram
           const { svg } = await mermaid.render(id, message);
           
           if (mermaidRef.current) {
             mermaidRef.current.innerHTML = svg;
+            console.log('Successfully rendered Mermaid diagram');
           }
         } catch (error) {
           console.error('Failed to render Mermaid diagram:', error);
@@ -48,8 +52,8 @@ export const ChatMessage = ({ isBot, message }: ChatMessageProps) => {
     renderMermaidDiagram();
   }, [message]);
 
-  // Improved detection of Mermaid diagrams - check for "graph", "subgraph", or typical Mermaid syntax
-  const isMermaidDiagram = /^(graph|subgraph)\s+|flowchart\s+|sequenceDiagram|classDiagram|stateDiagram/i.test(message.trim());
+  // Improved detection of Mermaid diagrams - check for various Mermaid syntax patterns
+  const isMermaidDiagram = /^(graph|subgraph|flowchart|sequenceDiagram|classDiagram|stateDiagram)/i.test(message.trim());
 
   return (
     <div
