@@ -55,13 +55,27 @@ serve(async (req) => {
     const peopleList = workflow.people ? workflow.people.join(', ') : 'None';
     const systemsList = workflow.systems ? workflow.systems.join(', ') : 'None';
     
-    // Create Mermaid flowchart string - ENSURE VALID SYNTAX
+    // Sanitize strings for Mermaid
+    const sanitize = (str: string) => {
+      if (!str) return "Not specified";
+      // Replace quotes, backslashes and other characters that could break Mermaid syntax
+      return str.replace(/"/g, "'").replace(/\\/g, "\\\\").trim();
+    };
+    
+    const sanitizedTitle = sanitize(workflow.title);
+    const sanitizedStart = sanitize(workflow.start_event);
+    const sanitizedEnd = sanitize(workflow.end_event);
+    const sanitizedPeople = sanitize(peopleList);
+    const sanitizedSystems = sanitize(systemsList);
+    const sanitizedPainPoint = sanitize(workflow.pain_point);
+    
+    // Create Mermaid flowchart string with improved syntax and node IDs
     const mermaidChart = `flowchart TD
-    Start([Start: ${workflow.start_event || 'Not specified'}]) --> Process
-    Process[${workflow.title}] --> End([End: ${workflow.end_event || 'Not specified'}])
-    Process -- People --> People[${peopleList}]
-    Process -- Systems --> Systems[${systemsList}]
-    Process -- Challenge --> PainPoint["${workflow.pain_point || 'Not specified'}"]`;
+    start([Start: ${sanitizedStart}]) --> process
+    process[${sanitizedTitle}] --> end([End: ${sanitizedEnd}])
+    process --> people[People: ${sanitizedPeople}]
+    process --> systems[Systems: ${sanitizedSystems}]
+    process --> painpoint[Challenge: ${sanitizedPainPoint}]`;
 
     console.log("Generated Mermaid chart:", mermaidChart);
 

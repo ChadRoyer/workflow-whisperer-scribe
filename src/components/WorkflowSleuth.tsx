@@ -104,6 +104,7 @@ export const WorkflowSleuth = () => {
     scrollToBottom();
   }, [messages]);
 
+  // Ensure app doesn't crash if userInfo is not available
   if (!userInfo) {
     return (
       <div className="flex h-[80vh] w-full mx-auto items-center justify-center">
@@ -111,6 +112,17 @@ export const WorkflowSleuth = () => {
       </div>
     );
   }
+
+  // Handle error recovery - make sure to render something even if there's an error
+  useEffect(() => {
+    try {
+      // Basic app initialization check
+      console.log("WorkflowSleuth component mounted, sessionId:", sessionId);
+    } catch (error) {
+      console.error("Error in WorkflowSleuth component:", error);
+      setRenderError(`Initialization error: ${(error as Error).message}`);
+    }
+  }, []);
 
   return (
     <div className="flex h-[80vh] w-full mx-auto overflow-hidden">
@@ -137,7 +149,7 @@ export const WorkflowSleuth = () => {
           {messages.length === 0 && !isLoading && !initializationError && !renderError ? (
             <div className="flex h-full items-center justify-center">
               <p className="text-muted-foreground">
-                {isInitialized ? "No messages yet" : "Initializing chat for " + userInfo.companyName + "..."}
+                {isInitialized ? "No messages yet" : "Initializing chat for " + (userInfo?.companyName || 'your company') + "..."}
               </p>
             </div>
           ) : (

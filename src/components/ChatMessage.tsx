@@ -13,20 +13,27 @@ export const ChatMessage = ({ isBot, message }: ChatMessageProps) => {
   const [renderError, setRenderError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Safety check - if message is null or undefined, don't attempt to render
+    if (!message) {
+      console.warn("Empty message received in ChatMessage component");
+      return;
+    }
+
     const renderMermaidDiagram = async () => {
       if (!mermaidRef.current || !message) return;
       
+      // Only attempt to render mermaid diagrams
       if (!isMermaidDiagram(message)) return;
       
       try {
-        console.log("Attempting to render Mermaid diagram:", message);
+        console.log("Attempting to render Mermaid diagram with content:", message.substring(0, 100) + "...");
         
         // Initialize mermaid with desired configuration
         mermaid.initialize({ 
-          startOnLoad: true,
+          startOnLoad: false, // Changed to false to manually control rendering
           theme: 'default',
           securityLevel: 'loose',
-          logLevel: 3,
+          logLevel: 5, // Increased log level for more debugging info
           flowchart: {
             useMaxWidth: true,
             htmlLabels: true
@@ -72,6 +79,7 @@ export const ChatMessage = ({ isBot, message }: ChatMessageProps) => {
   const isMermaidDiagram = (text: string): boolean => {
     if (!text) return false;
     
+    // Try to detect Mermaid syntax in more ways
     const mermaidPatterns = [
       /^\s*flowchart\s+/i,
       /^\s*graph\s+/i,
@@ -89,6 +97,11 @@ export const ChatMessage = ({ isBot, message }: ChatMessageProps) => {
     return mermaidPatterns.some(pattern => pattern.test(text.trim()));
   };
 
+  // Basic fallback for completely empty messages
+  if (!message) {
+    return null;
+  }
+
   return (
     <div
       className={cn(
@@ -102,9 +115,9 @@ export const ChatMessage = ({ isBot, message }: ChatMessageProps) => {
           isBot ? 'bg-secondary' : 'bg-primary text-primary-foreground'
         )}
       >
-        {message && isMermaidDiagram(message) ? (
-          <div className="mermaid-container w-full">
-            <div ref={mermaidRef} className="mermaid-diagram overflow-auto max-w-full w-full" />
+        {isMermaidDiagram(message) ? (
+          <div className="mermaid-container" style={{ width: '100%', maxWidth: '600px' }}>
+            <div ref={mermaidRef} className="mermaid-diagram overflow-auto max-w-full" />
             {renderError && (
               <div className="mt-2 p-2 text-xs bg-gray-100 rounded">
                 <p className="text-red-500 font-bold">Error rendering diagram:</p>
