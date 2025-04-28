@@ -3,6 +3,12 @@ import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
 
+// Global error handler to catch unhandled errors
+window.addEventListener('error', (event) => {
+  console.error('Global error caught:', event.error);
+  // Could add more error reporting here
+});
+
 // Create a container element if it doesn't exist for testing purposes
 if (!document.getElementById("root")) {
   const rootElement = document.createElement("div");

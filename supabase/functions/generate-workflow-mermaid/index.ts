@@ -51,33 +51,33 @@ serve(async (req) => {
     const workflow = workflows[0];
     console.log("Retrieved workflow data:", JSON.stringify(workflow));
     
-    // Format arrays into comma-separated strings, handling null values
-    const peopleList = workflow.people ? workflow.people.join(', ') : 'None';
-    const systemsList = workflow.systems ? workflow.systems.join(', ') : 'None';
-    
-    // Sanitize strings for Mermaid
-    const sanitize = (str: string) => {
+    // Generate safe text for mermaid by escaping special characters
+    const sanitize = (str) => {
       if (!str) return "Not specified";
-      // Replace quotes, backslashes and other characters that could break Mermaid syntax
       return str.replace(/"/g, "'").replace(/\\/g, "\\\\").replace(/\n/g, " ").trim();
     };
     
-    const sanitizedTitle = sanitize(workflow.title);
-    const sanitizedStart = sanitize(workflow.start_event);
-    const sanitizedEnd = sanitize(workflow.end_event);
-    const sanitizedPeople = sanitize(peopleList);
-    const sanitizedSystems = sanitize(systemsList);
-    const sanitizedPainPoint = sanitize(workflow.pain_point);
+    // Format arrays into comma-separated strings
+    const peopleList = workflow.people ? workflow.people.join(', ') : 'None';
+    const systemsList = workflow.systems ? workflow.systems.join(', ') : 'None';
     
-    // Create Mermaid flowchart string with proper syntax
-    // Note: Using parentheses () for node text instead of quotes to avoid syntax errors
+    // Sanitize all input strings
+    const title = sanitize(workflow.title);
+    const startEvent = sanitize(workflow.start_event);
+    const endEvent = sanitize(workflow.end_event);
+    const people = sanitize(peopleList);
+    const systems = sanitize(systemsList);
+    const painPoint = sanitize(workflow.pain_point);
+    
+    // Generate extremely simple mermaid diagram syntax
+    // Using minimal syntax to avoid parsing errors
     const mermaidChart = `flowchart TD
-    start(Start: ${sanitizedStart}) --> process(${sanitizedTitle})
-    process --> end(End: ${sanitizedEnd})
-    process --> people(People: ${sanitizedPeople})
-    process --> systems(Systems: ${sanitizedSystems})
-    process --> painpoint(Challenge: ${sanitizedPainPoint})`;
-
+    A[Start: ${startEvent}] --> B[${title}]
+    B --> C[End: ${endEvent}]
+    B --> D[People: ${people}]
+    B --> E[Systems: ${systems}]
+    B --> F[Challenge: ${painPoint}]`;
+    
     console.log("Generated Mermaid chart:", mermaidChart);
 
     return new Response(

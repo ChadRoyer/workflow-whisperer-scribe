@@ -11,38 +11,47 @@ interface ChatMessageProps {
 export const ChatMessage = ({ isBot, message }: ChatMessageProps) => {
   const mermaidRef = useRef<HTMLDivElement>(null);
   const [renderError, setRenderError] = useState<string | null>(null);
+  const [isMermaidContent, setIsMermaidContent] = useState<boolean>(false);
 
+  // Initialize mermaid with configuration once at component mount
   useEffect(() => {
-    // Safety check - if message is null or undefined, don't attempt to render
-    if (!message) {
-      console.log("Empty message received in ChatMessage component");
-      return;
+    try {
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: 'default',
+        securityLevel: 'loose',
+        logLevel: 1, // Less verbose logging
+        flowchart: {
+          useMaxWidth: true,
+          htmlLabels: true,
+          curve: 'basis'
+        }
+      });
+    } catch (error) {
+      console.error("Failed to initialize mermaid:", error);
     }
+  }, []);
 
-    const renderMermaidDiagram = async () => {
-      if (!mermaidRef.current || !message) return;
-      
-      // Only attempt to render mermaid diagrams
-      if (!isMermaidDiagram(message)) return;
-      
+  // Check for Mermaid diagram immediately
+  useEffect(() => {
+    // Safety check for null/empty messages
+    if (!message) return;
+    
+    const result = checkForMermaid(message);
+    setIsMermaidContent(result);
+  }, [message]);
+
+  // Render diagram effect
+  useEffect(() => {
+    if (!message || !isMermaidContent || !mermaidRef.current) return;
+    
+    const renderDiagram = async () => {
       try {
-        console.log("Attempting to render Mermaid diagram with content:", message);
+        console.log("Attempting to render diagram with content:", message);
         
-        // Initialize mermaid with desired configuration
-        mermaid.initialize({ 
-          startOnLoad: false,
-          theme: 'default',
-          securityLevel: 'loose',
-          logLevel: 5,
-          flowchart: {
-            useMaxWidth: true,
-            htmlLabels: true,
-            curve: 'basis'
-          }
-        });
-        
-        // Clear previous content
+        // Clear previous content and error state
         mermaidRef.current.innerHTML = '';
+        setRenderError(null);
         
         // Create a unique ID for this diagram
         const id = `mermaid-${Date.now()}`;
@@ -50,15 +59,16 @@ export const ChatMessage = ({ isBot, message }: ChatMessageProps) => {
         // Render the diagram
         const { svg } = await mermaid.render(id, message);
         
+        // Insert the rendered SVG
         if (mermaidRef.current) {
           mermaidRef.current.innerHTML = svg;
-          setRenderError(null);
           console.log("Successfully rendered Mermaid diagram");
         }
       } catch (error) {
         console.error('Failed to render Mermaid diagram:', error);
         setRenderError((error as Error).message || 'Unknown error');
         
+        // Display error message and diagram source for debugging
         if (mermaidRef.current) {
           mermaidRef.current.innerHTML = `
             <div class="p-2 border border-red-300 bg-red-50 text-red-800 rounded">
@@ -70,17 +80,14 @@ export const ChatMessage = ({ isBot, message }: ChatMessageProps) => {
       }
     };
 
-    // Only attempt to render if we have a message
-    if (message) {
-      renderMermaidDiagram();
-    }
-  }, [message]);
+    renderDiagram();
+  }, [message, isMermaidContent]);
 
   // Improved detection for Mermaid diagrams with multiple syntaxes
-  const isMermaidDiagram = (text: string): boolean => {
+  const checkForMermaid = (text: string): boolean => {
     if (!text) return false;
     
-    // Try to detect Mermaid syntax in more ways
+    // Detect various Mermaid diagram types
     const mermaidPatterns = [
       /^\s*flowchart\s+/i,
       /^\s*graph\s+/i,
@@ -98,9 +105,9 @@ export const ChatMessage = ({ isBot, message }: ChatMessageProps) => {
     return mermaidPatterns.some(pattern => pattern.test(text.trim()));
   };
 
-  // Fallback for completely empty messages
+  // Fallback for empty messages
   if (!message) {
-    return <div className="p-2 bg-gray-100 rounded">Empty message</div>;
+    return null; // Don't render anything for empty messages
   }
 
   return (
@@ -116,15 +123,13 @@ export const ChatMessage = ({ isBot, message }: ChatMessageProps) => {
           isBot ? 'bg-secondary' : 'bg-primary text-primary-foreground'
         )}
       >
-        {isMermaidDiagram(message) ? (
+        {isMermaidContent ? (
           <div className="mermaid-container" style={{ width: '100%', maxWidth: '600px' }}>
             <div ref={mermaidRef} className="mermaid-diagram overflow-auto max-w-full" />
             {renderError && (
               <div className="mt-2 p-2 text-xs bg-gray-100 rounded">
                 <p className="text-red-500 font-bold">Error rendering diagram:</p>
                 <p>{renderError}</p>
-                <p className="mt-2 font-bold">Diagram source:</p>
-                <pre className="whitespace-pre-wrap overflow-x-auto">{message}</pre>
               </div>
             )}
           </div>
