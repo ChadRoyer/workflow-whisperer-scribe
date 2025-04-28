@@ -15,7 +15,7 @@ export const ChatMessage = ({ isBot, message }: ChatMessageProps) => {
   useEffect(() => {
     // Safety check - if message is null or undefined, don't attempt to render
     if (!message) {
-      console.warn("Empty message received in ChatMessage component");
+      console.log("Empty message received in ChatMessage component");
       return;
     }
 
@@ -26,14 +26,14 @@ export const ChatMessage = ({ isBot, message }: ChatMessageProps) => {
       if (!isMermaidDiagram(message)) return;
       
       try {
-        console.log("Attempting to render Mermaid diagram with content:", message.substring(0, 100) + "...");
+        console.log("Attempting to render Mermaid diagram with content:", message);
         
         // Initialize mermaid with desired configuration
         mermaid.initialize({ 
-          startOnLoad: false, // Changed to false to manually control rendering
+          startOnLoad: false,
           theme: 'default',
           securityLevel: 'loose',
-          logLevel: 5, // Increased log level for more debugging info
+          logLevel: 5,
           flowchart: {
             useMaxWidth: true,
             htmlLabels: true
@@ -97,9 +97,9 @@ export const ChatMessage = ({ isBot, message }: ChatMessageProps) => {
     return mermaidPatterns.some(pattern => pattern.test(text.trim()));
   };
 
-  // Basic fallback for completely empty messages
+  // Fallback for completely empty messages
   if (!message) {
-    return null;
+    return <div className="p-2 bg-gray-100 rounded">Empty message</div>;
   }
 
   return (

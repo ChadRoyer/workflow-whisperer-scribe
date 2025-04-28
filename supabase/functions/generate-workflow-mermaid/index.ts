@@ -59,7 +59,7 @@ serve(async (req) => {
     const sanitize = (str: string) => {
       if (!str) return "Not specified";
       // Replace quotes, backslashes and other characters that could break Mermaid syntax
-      return str.replace(/"/g, "'").replace(/\\/g, "\\\\").trim();
+      return str.replace(/"/g, "'").replace(/\\/g, "\\\\").replace(/\n/g, " ").trim();
     };
     
     const sanitizedTitle = sanitize(workflow.title);
@@ -69,13 +69,13 @@ serve(async (req) => {
     const sanitizedSystems = sanitize(systemsList);
     const sanitizedPainPoint = sanitize(workflow.pain_point);
     
-    // Create Mermaid flowchart string with improved syntax and node IDs
+    // Create Mermaid flowchart string with node IDs that don't have spaces
     const mermaidChart = `flowchart TD
-    start([Start: ${sanitizedStart}]) --> process
-    process[${sanitizedTitle}] --> end([End: ${sanitizedEnd}])
-    process --> people[People: ${sanitizedPeople}]
-    process --> systems[Systems: ${sanitizedSystems}]
-    process --> painpoint[Challenge: ${sanitizedPainPoint}]`;
+    start["Start: ${sanitizedStart}"] --> process["${sanitizedTitle}"]
+    process --> end["End: ${sanitizedEnd}"]
+    process --> people["People: ${sanitizedPeople}"]
+    process --> systems["Systems: ${sanitizedSystems}"]
+    process --> painpoint["Challenge: ${sanitizedPainPoint}"]`;
 
     console.log("Generated Mermaid chart:", mermaidChart);
 
