@@ -51,13 +51,18 @@ serve(async (req) => {
     const workflow = workflows[0];
     console.log("Retrieved workflow data:", JSON.stringify(workflow));
     
-    // Generate safe text for mermaid by escaping special characters
+    // Properly encode text for mermaid by escaping special characters
     const sanitize = (str) => {
       if (!str) return "Not specified";
-      return str.replace(/"/g, "'").replace(/\\/g, "\\\\").replace(/\n/g, " ").trim();
+      // Convert special characters to HTML entities and wrap in quotes
+      return str.replace(/[()]/g, "_")  // Replace parentheses with underscores
+               .replace(/"/g, "'")
+               .replace(/\\/g, "\\\\")
+               .replace(/\n/g, " ")
+               .trim();
     };
     
-    // Format arrays into comma-separated strings
+    // Format arrays into comma-separated strings and sanitize
     const peopleList = workflow.people ? workflow.people.join(', ') : 'None';
     const systemsList = workflow.systems ? workflow.systems.join(', ') : 'None';
     
@@ -69,14 +74,13 @@ serve(async (req) => {
     const systems = sanitize(systemsList);
     const painPoint = sanitize(workflow.pain_point);
     
-    // Generate extremely simple mermaid diagram syntax
-    // Using minimal syntax to avoid parsing errors
+    // Generate very simple mermaid diagram syntax to avoid parsing issues
     const mermaidChart = `flowchart TD
-    A[Start: ${startEvent}] --> B[${title}]
-    B --> C[End: ${endEvent}]
-    B --> D[People: ${people}]
-    B --> E[Systems: ${systems}]
-    B --> F[Challenge: ${painPoint}]`;
+    A["Start: ${startEvent}"] --> B["${title}"]
+    B --> C["End: ${endEvent}"]
+    B --> D["People: ${people}"]
+    B --> E["Systems: ${systems}"]
+    B --> F["Challenge: ${painPoint}"]`;
     
     console.log("Generated Mermaid chart:", mermaidChart);
 

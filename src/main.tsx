@@ -6,7 +6,21 @@ import './index.css'
 // Global error handler to catch unhandled errors
 window.addEventListener('error', (event) => {
   console.error('Global error caught:', event.error);
-  // Could add more error reporting here
+  
+  // Log additional details if available
+  if (event.error && event.error.stack) {
+    console.error('Error stack:', event.error.stack);
+  }
+});
+
+// Add unhandled promise rejection handler
+window.addEventListener('unhandledrejection', (event) => {
+  console.error('Unhandled promise rejection:', event.reason);
+  
+  // Log additional details if available
+  if (event.reason && event.reason.stack) {
+    console.error('Rejection stack:', event.reason.stack);
+  }
 });
 
 // Create a container element if it doesn't exist for testing purposes
@@ -14,6 +28,22 @@ if (!document.getElementById("root")) {
   const rootElement = document.createElement("div");
   rootElement.id = "root";
   document.body.appendChild(rootElement);
+}
+
+// Mermaid specific error handling
+try {
+  // We can initialize mermaid globally here if needed
+  const mermaid = require('mermaid');
+  mermaid.initialize({
+    startOnLoad: false,  // Don't auto-render
+    securityLevel: 'loose',
+    theme: 'default',
+    logLevel: 1
+  });
+  
+  console.log('Mermaid initialized globally');
+} catch (error) {
+  console.error('Failed to initialize Mermaid globally:', error);
 }
 
 // Add error handling to rendering
