@@ -1,3 +1,4 @@
+
 import { useEffect, useRef } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 
@@ -12,12 +13,11 @@ export const useSessionTitle = (sessionId: string | null, messages: Message[]) =
   const titleGenerated = useRef(false);
 
   useEffect(() => {
-    if (messages.length >= 3 && sessionId) {
-      // only fire once
-      if (!titleGenerated.current) {
-        titleGenerated.current = true;
-        generateSessionTitle();
-      }
+    // Only generate title when we have at least 2 user messages (excluding bot responses)
+    const userMessages = messages.filter(msg => !msg.isBot);
+    if (userMessages.length >= 2 && sessionId && !titleGenerated.current) {
+      titleGenerated.current = true;
+      generateSessionTitle();
     }
   }, [messages, sessionId]);
 
@@ -25,10 +25,13 @@ export const useSessionTitle = (sessionId: string | null, messages: Message[]) =
     if (!sessionId || messages.length < 3) return;
 
     try {
-      const titleGenerationMessages = messages.slice(0, 5).map(msg => ({
-        role: msg.isBot ? 'assistant' : 'user',
-        text: msg.text
-      }));
+      const titleGenerationMessages = messages
+        .filter(msg => !msg.isBot)  // Only use user messages for context
+        .slice(0, 5)
+        .map(msg => ({
+          role: 'user',
+          text: msg.text
+        }));
 
       await supabase.functions.invoke('generate-session-title', {
         body: {

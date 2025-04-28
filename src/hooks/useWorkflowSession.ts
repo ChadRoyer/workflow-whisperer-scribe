@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
@@ -37,7 +36,6 @@ export const useWorkflowSession = (): WorkflowSessionReturn => {
     try {
       const storedSessionId = localStorage.getItem('workflowSleuthSessionId');
       
-      // Validate existing session ID if present
       if (storedSessionId) {
         const { data: sessionData, error: sessionError } = await supabase
           .from('sessions')
@@ -46,7 +44,6 @@ export const useWorkflowSession = (): WorkflowSessionReturn => {
           .single();
 
         if (!sessionError && sessionData) {
-          // Valid existing session found
           setSessionId(storedSessionId);
           const loadedMessages = await loadMessagesForSession(storedSessionId);
           setMessages(loadedMessages || []);
@@ -55,13 +52,13 @@ export const useWorkflowSession = (): WorkflowSessionReturn => {
         }
       }
 
-      // Create new session if no valid session exists
       if (userInfo) {
         const { data: newSession, error: sessionError } = await supabase
           .from('sessions')
           .insert({
             facilitator: 'WorkflowSleuth',
             company_name: userInfo.companyName,
+            title: 'New Chat',
             finished: false
           })
           .select()
@@ -71,7 +68,6 @@ export const useWorkflowSession = (): WorkflowSessionReturn => {
           throw new Error('Failed to create new session');
         }
 
-        // Immediately seed the initial message in the same transaction
         const { error: messageError } = await supabase
           .from('chat_messages')
           .insert({
@@ -88,7 +84,6 @@ export const useWorkflowSession = (): WorkflowSessionReturn => {
         setSessionId(newSession.id);
         localStorage.setItem('workflowSleuthSessionId', newSession.id);
         
-        // Load the seeded message
         const loadedMessages = await loadMessagesForSession(newSession.id);
         setMessages(loadedMessages || []);
         setIsLoading(false);
