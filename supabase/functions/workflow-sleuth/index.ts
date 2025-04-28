@@ -11,9 +11,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Function to validate if all required workflow fields are present
 function validateWorkflowData(data: any): boolean {
-  // Check if all required fields are present and have valid values
   return (
     data.title && 
     data.start_event && 
@@ -25,7 +23,6 @@ function validateWorkflowData(data: any): boolean {
   );
 }
 
-// Helper function to format workflow data for OpenAI function calls
 function formatWorkflowParameters() {
   return {
     name: "add_workflow",
@@ -66,19 +63,15 @@ function formatWorkflowParameters() {
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Parse request body ONCE and store it
     const requestData = await req.json();
     
-    // Handle test-openai action
     if (requestData.action === 'test-openai') {
       try {
-        // First, verify we have the OpenAI API key
         if (!openAIApiKey) {
           console.error('OpenAI API key is not set');
           return new Response(JSON.stringify({
@@ -90,7 +83,6 @@ serve(async (req) => {
           });
         }
         
-        // Check for obviously invalid API key format
         if (openAIApiKey.length < 20) {
           console.error('OpenAI API key appears to be invalid (too short)');
           return new Response(JSON.stringify({
@@ -102,7 +94,6 @@ serve(async (req) => {
           });
         }
         
-        // Log the API key length for debugging (never log the full key)
         console.log(`Using OpenAI API key (length: ${openAIApiKey.length})`);
         
         const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -121,13 +112,11 @@ serve(async (req) => {
           }),
         });
 
-        // Log the status and content type for debugging
         console.log(`OpenAI API response status: ${response.status}`);
         
         const data = await response.json();
         console.log('OpenAI API response:', JSON.stringify(data));
         
-        // Check if the response has the expected structure
         if (data.choices && data.choices.length > 0 && data.choices[0].message) {
           return new Response(JSON.stringify({
             success: true,
@@ -137,7 +126,6 @@ serve(async (req) => {
             status: 200
           });
         } else if (data.error) {
-          // If the response contains an error, return it
           return new Response(JSON.stringify({
             success: false,
             error: `OpenAI API Error: ${data.error.message || 'Unknown error'}`,
@@ -147,7 +135,6 @@ serve(async (req) => {
             status: 500
           });
         } else {
-          // If the response doesn't have the expected structure, return the whole response
           return new Response(JSON.stringify({
             success: false,
             error: "Unexpected response format from OpenAI API",
@@ -170,16 +157,14 @@ serve(async (req) => {
       }
     }
 
-    // Original workflow sleuth logic - use requestData instead of req.json()
     const { message, sessionId, messages } = requestData;
     
-    // Create a Supabase client for database operations
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
     const systemInstruction = `You are **WorkflowSleuth**, a friendly and methodical AI facilitation agent designed to help managers surface and document meaningful end-to-end workflows in their organisation.
 
 **GOAL**
-Your primary goal is to guide the user through a structured brainstorm to fully document **one complete workflow** at a time. Once a workflow is fully documented, you will trigger an action to save its details to the Supabase database. You will repeat this process until the user indicates they are "DONE".
+Your primary goal is to guide the user through a structured brainstorm to fully document **one complete workflow** at a time. Once a workflow is fully documented, you will trigger an action to save its details to the Supabase database. After saving, you'll offer to show a visualization of the workflow before moving on to the next one.
 
 A *workflow* starts with a clear external or internal TRIGGER (the start_event) and ends when the explicit OUTCOME has been achieved (the end_event).
 
@@ -216,8 +201,8 @@ Before triggering the save action for a workflow, you MUST determine values for 
     10. Where does this process typically wait on EXTERNAL parties (like banks, suppliers, regulators, other departments)? (Helps identify bottlenecks/pain_point)
 
     *After processing the tenth answer and ensuring ALL 6 data fields (title, start, end, people, systems, pain point) have been determined for the current workflow:* "Okay, I think I have the details for this workflow. Let me summarize..." [Provide summary]. "Does that sound right?"
-3.  **SAVING:** If the user confirms the summary, trigger the **Supabase save action** configured for this application. After triggering it, await confirmation (or handle errors) and inform the user (e.g., "Got it, that workflow is saved.").
-4.  **NEXT WORKFLOW / ENDING:** After saving, ask: "Shall we document another workflow, or are you DONE for now?" If they describe another workflow, repeat the DISCOVERY process. If they type "DONE", proceed to END CONDITION.
+3.  **SAVING:** If the user confirms the summary, trigger the **Supabase save action** configured for this application. After triggering it, await confirmation (or handle errors) and inform the user. Upon successful save, IMMEDIATELY ask: "Now that your workflow details are saved, would you like to see a visual diagram of it to help spot opportunities for AI or automation?"
+4.  **VISUALIZATION:** If the user wants to see the diagram, acknowledge this and inform them you'll generate it. If they decline or after showing the diagram, proceed to ask: "Shall we document another workflow, or are you DONE for now?" If they describe another workflow, repeat the DISCOVERY process. If they type "DONE", proceed to END CONDITION.
 5.  **FOLLOW-UPS:** If an answer during DISCOVERY is vague or doesn't yield enough detail to determine one of the 6 required fields, use one of these probes (pick the most relevant):
     * "Who exactly receives that or performs that step?" (for people)
     * "What system or tool is used for that specific action?" (for systems)
@@ -229,12 +214,12 @@ Before triggering the save action for a workflow, you MUST determine values for 
 * Focus solely on capturing workflow details during discovery; do **not** offer solutions, tools, or AI advice.
 * Ensure ALL 6 required data fields (\`title\`, \`start_event\`, \`end_event\`, \`people\`, \`systems\`, \`pain_point\`) have been synthesized and confirmed with the user before triggering the Supabase save action for a workflow. If any are missing after the 10 questions, use follow-up probes.
 * Trigger the save action only once per fully documented workflow.
+* Always offer to show a visualization immediately after saving a workflow and before asking about documenting another one.
 * Use a low temperature (like 0.2 if possible) for consistent behaviour.
 
 **END CONDITION**
 When the user types "DONE" after being asked if they want to document another workflow, respond: "Great—we've captured those workflows. They are saved and ready for the next steps." Then stop the process.`;
 
-    // Prepare the conversation history for OpenAI
     const conversationHistory = [
       { role: "system", content: systemInstruction },
       ...messages.map((msg) => ({
@@ -243,7 +228,6 @@ When the user types "DONE" after being asked if they want to document another wo
       }))
     ];
 
-    // Call OpenAI API
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -262,16 +246,11 @@ When the user types "DONE" after being asked if they want to document another wo
     const data = await response.json();
     console.log("OpenAI Response:", JSON.stringify(data, null, 2));
 
-    // Check if the response contains a function call
     let responseMessage = data.choices[0].message;
     
-    // If a workflow is successfully added, we'll return a response that includes
-    // both the workflow details and a confirmation message
     if (responseMessage.function_call && responseMessage.function_call.name === "add_workflow") {
-      // Parse the function arguments
       const functionArgs = JSON.parse(responseMessage.function_call.arguments);
       
-      // Validate the workflow data before saving
       if (!validateWorkflowData(functionArgs)) {
         console.error("Invalid workflow data:", functionArgs);
         return new Response(JSON.stringify({ 
@@ -284,7 +263,6 @@ When the user types "DONE" after being asked if they want to document another wo
 
       console.log("Adding workflow:", functionArgs);
 
-      // Insert the workflow into the database
       const { data: workflowData, error } = await supabase
         .from('workflows')
         .insert([
@@ -305,7 +283,6 @@ When the user types "DONE" after being asked if they want to document another wo
         throw new Error(`Failed to save the workflow: ${error.message}`);
       }
 
-      // Count existing workflows for this session
       const { count, error: countError } = await supabase
         .from('workflows')
         .select('*', { count: 'exact' })
@@ -315,10 +292,8 @@ When the user types "DONE" after being asked if they want to document another wo
         console.error("Error counting workflows:", countError);
       }
 
-      // Prepare a confirmation message about the saved workflow
       const confirmation = `OK, I've saved the "${functionArgs.title}" workflow to our database. ${count >= 10 ? "We've captured quite a few workflows now. Would you like to continue or are you DONE for now?" : "Shall we document another workflow, or are you DONE for now?"}`;
       
-      // Return both the workflow data and a reply
       return new Response(JSON.stringify({ 
         reply: confirmation,
         addedWorkflow: workflowData ? workflowData[0] : null,
@@ -328,7 +303,6 @@ When the user types "DONE" after being asked if they want to document another wo
       });
     }
     
-    // For regular text responses
     return new Response(JSON.stringify({ 
       reply: responseMessage.content,
       addedWorkflow: null
