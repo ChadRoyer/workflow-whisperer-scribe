@@ -57,22 +57,41 @@ export const useWorkflowSession = (): WorkflowSessionReturn => {
 
       // Create new session if no valid session exists
       if (userInfo) {
-        const newSession = await createNewSession();
-        if (newSession) {
-          setSessionId(newSession.id);
-          localStorage.setItem('workflowSleuthSessionId', newSession.id);
-          setMessages([]);
-          
-          // Immediately seed the chat with initial message
-          await supabase.functions.invoke("workflow-sleuth", {
-            body: {
-              sessionId: newSession.id,
-              systemMessage: "seed"
-            }
-          });
-          
-          setIsLoading(false);
+        const { data: newSession, error: sessionError } = await supabase
+          .from('sessions')
+          .insert({
+            facilitator: 'WorkflowSleuth',
+            company_name: userInfo.companyName,
+            finished: false
+          })
+          .select()
+          .single();
+
+        if (sessionError || !newSession) {
+          throw new Error('Failed to create new session');
         }
+
+        // Immediately seed the initial message in the same transaction
+        const { error: messageError } = await supabase
+          .from('chat_messages')
+          .insert({
+            session_id: newSession.id,
+            role: 'assistant',
+            content: `Hello! I'm WorkflowSleuth, and I'm here to help you map and optimize workflows at ${userInfo.companyName}. What workflow would you like to explore today?`
+          });
+
+        if (messageError) {
+          console.error('Error seeding initial message:', messageError);
+          throw new Error('Failed to seed initial message');
+        }
+
+        setSessionId(newSession.id);
+        localStorage.setItem('workflowSleuthSessionId', newSession.id);
+        
+        // Load the seeded message
+        const loadedMessages = await loadMessagesForSession(newSession.id);
+        setMessages(loadedMessages || []);
+        setIsLoading(false);
       }
     } catch (error) {
       console.error("Session initialization error:", error);
