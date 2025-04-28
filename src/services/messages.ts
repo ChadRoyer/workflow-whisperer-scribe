@@ -31,9 +31,11 @@ export const saveMessageToDatabase = async (message: Message, sessionId: string 
       console.error("Session does not exist:", sessionId);
       toast({
         title: "Session Error",
-        description: "The session no longer exists. You may need to start a new chat.",
+        description: "The session no longer exists. Creating a new chat session...",
         variant: "destructive",
       });
+      
+      // Allow the application to create a new session instead of returning null
       return null;
     }
 

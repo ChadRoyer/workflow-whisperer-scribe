@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
@@ -18,7 +19,7 @@ interface WorkflowSessionReturn {
   isInitialized: boolean;
   initializationError: string | null;
   setSessionId: (id: string | null) => void;
-  setMessages: (messages: Message[]) => void;
+  setMessages: (messages: Message[] | ((prevMessages: Message[]) => Message[])) => void;
   setIsLoading: (loading: boolean) => void;
   loadMessagesForSession: (id: string) => Promise<Message[]>;
   createNewSession: () => Promise<{ id: string } | null>;
@@ -53,21 +54,17 @@ export const useWorkflowSession = (): WorkflowSessionReturn => {
       }
 
       if (userInfo) {
-        const { data: newSession, error: sessionError } = await supabase
-          .from('sessions')
-          .insert({
-            facilitator: 'WorkflowSleuth',
-            company_name: userInfo.companyName,
-            title: 'New Chat',
-            finished: false
-          })
-          .select()
-          .single();
-
-        if (sessionError || !newSession) {
+        // Create a new session
+        const newSession = await createNewSession();
+        
+        if (!newSession) {
           throw new Error('Failed to create new session');
         }
 
+        setSessionId(newSession.id);
+        localStorage.setItem('workflowSleuthSessionId', newSession.id);
+        
+        // Add initial welcome message
         const { error: messageError } = await supabase
           .from('chat_messages')
           .insert({
@@ -78,15 +75,11 @@ export const useWorkflowSession = (): WorkflowSessionReturn => {
 
         if (messageError) {
           console.error('Error seeding initial message:', messageError);
-          throw new Error('Failed to seed initial message');
+          // Continue despite the error - we'll load whatever messages did save
         }
-
-        setSessionId(newSession.id);
-        localStorage.setItem('workflowSleuthSessionId', newSession.id);
         
         const loadedMessages = await loadMessagesForSession(newSession.id);
         setMessages(loadedMessages || []);
-        setIsLoading(false);
       }
     } catch (error) {
       console.error("Session initialization error:", error);
@@ -130,11 +123,15 @@ export const useWorkflowSession = (): WorkflowSessionReturn => {
     if (!userInfo) return null;
 
     try {
+      // First check if the company name exists
+      const companyName = userInfo.companyName || 'Unknown Company';
+      
       const { data, error } = await supabase
         .from('sessions')
         .insert({
           facilitator: 'WorkflowSleuth',
-          company_name: userInfo.companyName,
+          company_name: companyName,
+          title: 'New Chat',
           finished: false
         })
         .select()
@@ -142,12 +139,22 @@ export const useWorkflowSession = (): WorkflowSessionReturn => {
 
       if (error) {
         console.error("Session creation error:", error);
+        toast({
+          title: "Error",
+          description: "Failed to create a new session. Please try again.",
+          variant: "destructive"
+        });
         return null;
       }
 
       return data;
     } catch (error) {
       console.error("Unexpected error creating session:", error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred while creating a new session.",
+        variant: "destructive"
+      });
       return null;
     }
   };

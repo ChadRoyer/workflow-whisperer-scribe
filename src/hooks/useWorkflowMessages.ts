@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { saveMessageToDatabase } from "@/services/messages";
@@ -103,6 +104,10 @@ export const useWorkflowMessages = ({
         }
 
         console.log("Received response from workflow-sleuth:", data);
+        
+        if (!data || typeof data.reply !== 'string') {
+          throw new Error('Invalid response from server');
+        }
         
         const botMessage = { text: data.reply, isBot: true };
         const savedBotMessage = await saveMessageToDatabase(botMessage, sessionId);
