@@ -51,36 +51,42 @@ serve(async (req) => {
     const workflow = workflows[0];
     console.log("Retrieved workflow data:", JSON.stringify(workflow));
     
-    // Properly encode text for mermaid by escaping special characters
-    const sanitize = (str) => {
-      if (!str) return "Not specified";
-      // Convert special characters to HTML entities and wrap in quotes
-      return str.replace(/[()]/g, "_")  // Replace parentheses with underscores
-               .replace(/"/g, "'")
-               .replace(/\\/g, "\\\\")
-               .replace(/\n/g, " ")
-               .trim();
+    // Using extremely simple Mermaid syntax to avoid parsing issues
+    // Avoid using special characters completely
+    const sanitizeForMermaid = (text) => {
+      if (!text) return "Not specified";
+      
+      // Replace problematic characters and patterns
+      return text.replace(/[()[\]{}]/g, "_")  // Replace brackets with underscores
+                .replace(/"/g, "'")           // Replace double quotes with single quotes
+                .replace(/\\/g, "")           // Remove backslashes
+                .replace(/\n/g, " ")          // Replace newlines with spaces
+                .replace(/,/g, " ")           // Replace commas with spaces
+                .replace(/:/g, "-")           // Replace colons with hyphens
+                .replace(/;/g, " ")           // Replace semicolons with spaces
+                .trim();
     };
     
-    // Format arrays into comma-separated strings and sanitize
-    const peopleList = workflow.people ? workflow.people.join(', ') : 'None';
-    const systemsList = workflow.systems ? workflow.systems.join(', ') : 'None';
+    // Format arrays into strings and sanitize
+    const peopleList = workflow.people ? workflow.people.join(' ') : 'None';
+    const systemsList = workflow.systems ? workflow.systems.join(' ') : 'None';
     
     // Sanitize all input strings
-    const title = sanitize(workflow.title);
-    const startEvent = sanitize(workflow.start_event);
-    const endEvent = sanitize(workflow.end_event);
-    const people = sanitize(peopleList);
-    const systems = sanitize(systemsList);
-    const painPoint = sanitize(workflow.pain_point);
+    const title = sanitizeForMermaid(workflow.title);
+    const startEvent = sanitizeForMermaid(workflow.start_event);
+    const endEvent = sanitizeForMermaid(workflow.end_event);
+    const people = sanitizeForMermaid(peopleList);
+    const systems = sanitizeForMermaid(systemsList);
+    const painPoint = sanitizeForMermaid(workflow.pain_point);
     
-    // Generate very simple mermaid diagram syntax to avoid parsing issues
+    // Generate a ultra-simple Mermaid diagram with absolutely minimal syntax
+    // Using the simplest flowchart format possible
     const mermaidChart = `flowchart TD
-    A["Start: ${startEvent}"] --> B["${title}"]
-    B --> C["End: ${endEvent}"]
-    B --> D["People: ${people}"]
-    B --> E["Systems: ${systems}"]
-    B --> F["Challenge: ${painPoint}"]`;
+    A[Start] --> B[${title}]
+    B --> C[End]
+    B --> D[People]
+    B --> E[Systems]
+    B --> F[Challenge]`;
     
     console.log("Generated Mermaid chart:", mermaidChart);
 

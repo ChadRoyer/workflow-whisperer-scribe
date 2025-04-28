@@ -2,6 +2,7 @@
 import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
+import mermaid from 'mermaid'
 
 // Global error handler to catch unhandled errors
 window.addEventListener('error', (event) => {
@@ -10,6 +11,13 @@ window.addEventListener('error', (event) => {
   // Log additional details if available
   if (event.error && event.error.stack) {
     console.error('Error stack:', event.error.stack);
+  }
+  
+  // Special handling for Mermaid parsing errors
+  if (event.error && event.error.message && event.error.message.includes('Parse error')) {
+    console.warn('Mermaid parsing error detected in global handler:', event.error.message);
+    // Let the component-level error handler deal with it
+    event.preventDefault();  // Prevent default error handling
   }
 });
 
@@ -21,6 +29,13 @@ window.addEventListener('unhandledrejection', (event) => {
   if (event.reason && event.reason.stack) {
     console.error('Rejection stack:', event.reason.stack);
   }
+  
+  // Special handling for Mermaid parsing errors in promises
+  if (event.reason && event.reason.message && event.reason.message.includes('Parse error')) {
+    console.warn('Mermaid parsing error detected in promise rejection:', event.reason.message);
+    // Let the component-level error handler deal with it
+    event.preventDefault();  // Prevent default error handling
+  }
 });
 
 // Create a container element if it doesn't exist for testing purposes
@@ -30,18 +45,27 @@ if (!document.getElementById("root")) {
   document.body.appendChild(rootElement);
 }
 
-// Mermaid specific error handling
+// Initialize Mermaid globally with robust error handling
 try {
-  // We can initialize mermaid globally here if needed
-  const mermaid = require('mermaid');
   mermaid.initialize({
-    startOnLoad: false,  // Don't auto-render
+    startOnLoad: false,
     securityLevel: 'loose',
     theme: 'default',
-    logLevel: 1
+    logLevel: 1,
+    flowchart: {
+      useMaxWidth: true,
+      htmlLabels: true,
+      curve: 'linear'
+    },
+    // Add error handling callback
+    parseError: (err, hash) => {
+      console.error('Mermaid parse error:', err);
+      // This doesn't stop the error but lets us log it
+      return;
+    }
   });
   
-  console.log('Mermaid initialized globally');
+  console.log('Mermaid initialized globally with enhanced error handling');
 } catch (error) {
   console.error('Failed to initialize Mermaid globally:', error);
 }

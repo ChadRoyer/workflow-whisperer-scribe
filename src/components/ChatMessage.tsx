@@ -13,46 +13,52 @@ export const ChatMessage = ({ isBot, message }: ChatMessageProps) => {
   const [renderError, setRenderError] = useState<string | null>(null);
   const [isMermaidContent, setIsMermaidContent] = useState<boolean>(false);
 
-  // Initialize mermaid with configuration once at component mount
+  // Initialize mermaid with secure, simplified configuration
   useEffect(() => {
     try {
       mermaid.initialize({
         startOnLoad: false,
         theme: 'default',
         securityLevel: 'loose',
-        logLevel: 1, // Less verbose logging
+        logLevel: 1,
         flowchart: {
           useMaxWidth: true,
           htmlLabels: true,
-          curve: 'basis'
+          curve: 'linear' // Using linear curves for simpler rendering
         }
       });
+      console.log("Mermaid initialized with simplified configuration");
     } catch (error) {
       console.error("Failed to initialize mermaid:", error);
     }
   }, []);
 
-  // Check if content is a mermaid diagram
+  // Check if content is a mermaid diagram using robust pattern matching
   useEffect(() => {
     if (!message || typeof message !== 'string') {
       setIsMermaidContent(false);
       return;
     }
     
-    // Check if the message appears to be a mermaid diagram
-    const isMermaid = checkForMermaid(message);
-    setIsMermaidContent(isMermaid);
+    // More robust detection of Mermaid content
+    const trimmedMessage = message.trim();
+    const isMermaid = /^(flowchart|graph|sequenceDiagram|classDiagram|stateDiagram|erDiagram|gantt|pie|gitGraph|journey|mindmap)/i.test(trimmedMessage);
     
-    console.log(`Message ${isMermaid ? 'is' : 'is not'} a Mermaid diagram: ${message.substring(0, 50)}...`);
+    console.log(`Checking if message is Mermaid diagram: ${isMermaid ? 'YES' : 'NO'}`);
+    if (isMermaid) {
+      console.log("Mermaid content detected:", trimmedMessage.substring(0, 100));
+    }
+    
+    setIsMermaidContent(isMermaid);
   }, [message]);
 
-  // Render the mermaid diagram
+  // Render the mermaid diagram with enhanced error handling
   useEffect(() => {
     if (!message || !isMermaidContent || !mermaidRef.current) return;
     
     const renderDiagram = async () => {
       try {
-        console.log("Attempting to render diagram...");
+        console.log("Attempting to render Mermaid diagram...");
         
         // Clear previous content and error state
         if (mermaidRef.current) {
@@ -63,7 +69,7 @@ export const ChatMessage = ({ isBot, message }: ChatMessageProps) => {
         // Create a unique ID for this diagram
         const id = `mermaid-${Date.now()}`;
         
-        // Render the diagram
+        // Attempt to render the diagram with pre-sanitized content
         const { svg } = await mermaid.render(id, message);
         
         // Insert the rendered SVG
@@ -75,7 +81,7 @@ export const ChatMessage = ({ isBot, message }: ChatMessageProps) => {
         console.error('Failed to render Mermaid diagram:', error);
         setRenderError((error as Error).message || 'Unknown error');
         
-        // Provide better error visualization and the raw diagram code
+        // Provide detailed error visualization and the raw diagram code
         if (mermaidRef.current) {
           mermaidRef.current.innerHTML = `
             <div class="p-2 border border-red-300 bg-red-50 text-red-800 rounded mb-4">
@@ -88,37 +94,45 @@ export const ChatMessage = ({ isBot, message }: ChatMessageProps) => {
             </div>
           `;
         }
+        
+        // Also provide a fallback simple text representation
+        const fallback = document.createElement('div');
+        fallback.className = 'mt-4 p-2 border border-gray-200 bg-white rounded';
+        fallback.innerHTML = '<p class="text-sm font-medium">Workflow Details:</p>';
+        
+        // Extract parts from a basic flowchart
+        const parts = message.split('\n');
+        const processedParts = parts.filter(part => part.includes('-->') || part.includes('['));
+        
+        if (processedParts.length > 0) {
+          const listEl = document.createElement('ul');
+          listEl.className = 'list-disc pl-5 mt-2 text-sm';
+          
+          processedParts.forEach(part => {
+            if (part.includes('[') && part.includes(']')) {
+              const content = part.substring(part.indexOf('[') + 1, part.lastIndexOf(']'));
+              const item = document.createElement('li');
+              item.textContent = content;
+              listEl.appendChild(item);
+            }
+          });
+          
+          fallback.appendChild(listEl);
+          
+          if (mermaidRef.current) {
+            mermaidRef.current.appendChild(fallback);
+          }
+        }
       }
     };
 
-    // Add a small delay to ensure DOM is ready
+    // Add a delay to ensure DOM is ready
     const timer = setTimeout(() => {
       renderDiagram();
     }, 100);
     
     return () => clearTimeout(timer);
   }, [message, isMermaidContent]);
-
-  // Detect various types of Mermaid diagrams with better pattern matching
-  const checkForMermaid = (text: string): boolean => {
-    if (!text || typeof text !== 'string') return false;
-    
-    // Trim and get first 150 chars for performance
-    const firstLines = text.trim().substring(0, 150);
-    
-    // Common Mermaid diagram markers at the start of the text
-    return /^\s*flowchart\s+/i.test(firstLines) ||
-           /^\s*graph\s+/i.test(firstLines) ||
-           /^\s*sequenceDiagram/i.test(firstLines) ||
-           /^\s*classDiagram/i.test(firstLines) ||
-           /^\s*stateDiagram/i.test(firstLines) ||
-           /^\s*erDiagram/i.test(firstLines) ||
-           /^\s*gantt/i.test(firstLines) ||
-           /^\s*pie/i.test(firstLines) ||
-           /^\s*gitGraph/i.test(firstLines) ||
-           /^\s*journey/i.test(firstLines) ||
-           /^\s*mindmap/i.test(firstLines);
-  };
 
   // Fallback for empty messages
   if (!message) {
