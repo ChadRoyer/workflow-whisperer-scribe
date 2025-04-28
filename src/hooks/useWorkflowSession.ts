@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { checkSessionHasMessages } from "@/services/messages";
 
 interface Message {
   id?: string;
@@ -64,20 +65,39 @@ export const useWorkflowSession = (): WorkflowSessionReturn => {
         setSessionId(newSession.id);
         localStorage.setItem('workflowSleuthSessionId', newSession.id);
         
-        // Add initial welcome message
-        const { error: messageError } = await supabase
-          .from('chat_messages')
-          .insert({
-            session_id: newSession.id,
-            role: 'assistant',
-            content: `Hello! I'm WorkflowSleuth, and I'm here to help you map and optimize workflows at ${userInfo.companyName}. What workflow would you like to explore today?`
-          });
+        // Add initial welcome message directly after creating session
+        const welcomeMessage = `Hello! I'm WorkflowSleuth, and I'm here to help you map and optimize workflows at ${userInfo.companyName || 'your company'}. What workflow would you like to explore today?`;
+        
+        try {
+          // Ensure the session exists before trying to add a message
+          const { data: sessionCheck } = await supabase
+            .from('sessions')
+            .select('id')
+            .eq('id', newSession.id)
+            .single();
+            
+          if (sessionCheck) {
+            const { data: messageData, error: messageError } = await supabase
+              .from('chat_messages')
+              .insert({
+                session_id: newSession.id,
+                role: 'assistant',
+                content: welcomeMessage
+              })
+              .select();
 
-        if (messageError) {
-          console.error('Error seeding initial message:', messageError);
-          // Continue despite the error - we'll load whatever messages did save
+            if (messageError) {
+              console.error('Error seeding initial message:', messageError);
+            } else {
+              console.log('Successfully added welcome message:', messageData);
+            }
+          }
+        } catch (error) {
+          console.error('Error adding welcome message:', error);
+          // Continue despite the error
         }
         
+        // Fetch the messages after adding welcome message
         const loadedMessages = await loadMessagesForSession(newSession.id);
         setMessages(loadedMessages || []);
       }
@@ -147,6 +167,7 @@ export const useWorkflowSession = (): WorkflowSessionReturn => {
         return null;
       }
 
+      console.log("Successfully created new session:", data);
       return data;
     } catch (error) {
       console.error("Unexpected error creating session:", error);
@@ -160,24 +181,7 @@ export const useWorkflowSession = (): WorkflowSessionReturn => {
   };
 
   const checkHasMessages = async (sid: string | null) => {
-    if (!sid) return false;
-    
-    try {
-      const { count, error } = await supabase
-        .from('chat_messages')
-        .select('id', { count: 'exact', head: true })
-        .eq('session_id', sid);
-      
-      if (error) {
-        console.error("Error checking for messages:", error);
-        return false;
-      }
-      
-      return count !== null && count > 0;
-    } catch (error) {
-      console.error("Error in checkHasMessages:", error);
-      return false;
-    }
+    return await checkSessionHasMessages(sid);
   };
 
   useEffect(() => {

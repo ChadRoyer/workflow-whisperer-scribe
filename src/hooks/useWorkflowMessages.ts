@@ -1,4 +1,5 @@
 
+
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { saveMessageToDatabase } from "@/services/messages";
@@ -127,7 +128,7 @@ export const useWorkflowMessages = ({
             { id: savedFollowUpMessage.id, text: data.nextMessage, isBot: true, sessionId: savedFollowUpMessage.session_id } : 
             followUpMessage;
           
-          setMessages(prevMessages => [...prevMessages, newFollowUpMessage] as Message[]);
+          setMessages((prevMessages) => [...prevMessages, newFollowUpMessage] as Message[]);
         }
 
       } catch (error) {
