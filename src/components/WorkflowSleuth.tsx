@@ -7,6 +7,7 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { useWorkflowSession } from "@/hooks/useWorkflowSession";
 import { useWorkflowMessages } from "@/hooks/useWorkflowMessages";
 import { useSessionTitle } from "@/hooks/useSessionTitle";
+import { useSessionManagement } from "./chat/useSessionManagement";
 import { toast } from "@/components/ui/use-toast";
 import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -33,6 +34,8 @@ export const WorkflowSleuth = () => {
     initializeSession
   } = useWorkflowSession();
 
+  const { sessions, isLoading: isLoadingSessions, fetchSessions, deleteSession } = useSessionManagement(sessionId);
+
   // Add useSessionTitle hook here - consistent hook order
   useSessionTitle(sessionId, messages);
 
@@ -49,9 +52,7 @@ export const WorkflowSleuth = () => {
       if (selectedSessionId === sessionId) return;
       
       setIsLoading(true);
-      
       setMessages([]);
-      
       setSessionId(selectedSessionId);
       
       const loadedMessages = await loadMessagesForSession(selectedSessionId);
@@ -77,6 +78,9 @@ export const WorkflowSleuth = () => {
       setSessionId(newSession.id);
       localStorage.setItem('workflowSleuthSessionId', newSession.id);
       setMessages([]);
+      
+      // Refresh sessions list immediately after creating new chat
+      await fetchSessions();
     } catch (error) {
       console.error("Error creating new chat:", error);
       toast({
