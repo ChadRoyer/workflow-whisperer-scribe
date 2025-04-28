@@ -57,12 +57,7 @@ try {
       htmlLabels: true,
       curve: 'linear'
     },
-    // Add error handling callback
-    parseError: (err, hash) => {
-      console.error('Mermaid parse error:', err);
-      // This doesn't stop the error but lets us log it
-      return;
-    }
+    // Removed the invalid parseError property
   });
   
   console.log('Mermaid initialized globally with enhanced error handling');
