@@ -244,8 +244,6 @@ When the user types "DONE" after being asked if they want to document another wo
     });
 
     const data = await response.json();
-    console.log("OpenAI Response:", JSON.stringify(data, null, 2));
-
     let responseMessage = data.choices[0].message;
     
     if (responseMessage.function_call && responseMessage.function_call.name === "add_workflow") {
@@ -260,8 +258,6 @@ When the user types "DONE" after being asked if they want to document another wo
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
-
-      console.log("Adding workflow:", functionArgs);
 
       const { data: workflowData, error } = await supabase
         .from('workflows')
@@ -292,7 +288,45 @@ When the user types "DONE" after being asked if they want to document another wo
         console.error("Error counting workflows:", countError);
       }
 
-      const confirmation = `OK, I've saved the "${functionArgs.title}" workflow to our database. ${count >= 10 ? "We've captured quite a few workflows now. Would you like to continue or are you DONE for now?" : "Shall we document another workflow, or are you DONE for now?"}`;
+      // If user says yes to visualization, fetch the diagram
+      if (message.toLowerCase().includes('yes') && 
+          messages[messages.length - 2]?.text?.includes('would you like to see a visual diagram')) {
+        try {
+          const visualizationResponse = await fetch(
+            `https://jqrgqevteccqxnrmocuw.supabase.co/functions/v1/generate-workflow-mermaid`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${supabaseServiceKey}`
+              },
+              body: JSON.stringify({ workflowTitle: functionArgs.title })
+            }
+          );
+          
+          const visualData = await visualizationResponse.json();
+          return new Response(
+            JSON.stringify({ 
+              reply: visualData.mermaidChart || visualData.error,
+              addedWorkflow: workflowData ? workflowData[0] : null,
+              workflowCount: count
+            }), 
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        } catch (error) {
+          console.error("Error generating visualization:", error);
+          return new Response(
+            JSON.stringify({ 
+              reply: "I encountered an error while generating the visualization. Would you like to document another workflow, or are you DONE for now?",
+              addedWorkflow: workflowData ? workflowData[0] : null,
+              workflowCount: count
+            }), 
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      }
+
+      const confirmation = `OK, I've saved the "${functionArgs.title}" workflow to our database. ${count >= 10 ? "We've captured quite a few workflows now. Would you like to continue or are you DONE for now?" : "Now that your workflow details are saved, would you like to see a visual diagram of it to help spot opportunities for AI or automation?"}`;
       
       return new Response(JSON.stringify({ 
         reply: confirmation,
