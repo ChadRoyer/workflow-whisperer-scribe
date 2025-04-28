@@ -1,4 +1,3 @@
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
@@ -94,7 +93,6 @@ serve(async (req) => {
         console.error("Error counting workflows:", countError);
       }
 
-      // Updated visualization logic
       if (message.toLowerCase().includes('yes') && 
           messages[messages.length - 2]?.text?.includes('would you like to see a visual diagram')) {
         try {
@@ -124,12 +122,41 @@ serve(async (req) => {
           }
           
           console.log("Successfully generated Mermaid diagram");
-          
+
+          const { error: messageError } = await supabase
+            .from('chat_messages')
+            .insert({
+              session_id: sessionId,
+              role: 'assistant',
+              content: visualData.mermaidChart
+            });
+
+          if (messageError) {
+            console.error("Error saving diagram message:", messageError);
+          }
+
+          const followUpQuestion = count >= 10 
+            ? "Now that we've captured quite a few workflows, would you like to continue or are you DONE for now?"
+            : "Shall we document another workflow, or are you DONE for now?";
+
+          const { error: followUpError } = await supabase
+            .from('chat_messages')
+            .insert({
+              session_id: sessionId,
+              role: 'assistant',
+              content: followUpQuestion
+            });
+
+          if (followUpError) {
+            console.error("Error saving follow-up message:", followUpError);
+          }
+
           return new Response(
             JSON.stringify({ 
               reply: visualData.mermaidChart,
               addedWorkflow: workflowData ? workflowData[0] : null,
-              workflowCount: count
+              workflowCount: count,
+              nextMessage: followUpQuestion
             }), 
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
