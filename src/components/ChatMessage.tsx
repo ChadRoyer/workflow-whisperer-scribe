@@ -36,7 +36,8 @@ export const ChatMessage = ({ isBot, message }: ChatMessageProps) => {
           logLevel: 5,
           flowchart: {
             useMaxWidth: true,
-            htmlLabels: true
+            htmlLabels: true,
+            curve: 'basis'
           }
         });
         

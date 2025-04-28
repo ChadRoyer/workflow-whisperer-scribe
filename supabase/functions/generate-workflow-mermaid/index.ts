@@ -69,13 +69,14 @@ serve(async (req) => {
     const sanitizedSystems = sanitize(systemsList);
     const sanitizedPainPoint = sanitize(workflow.pain_point);
     
-    // Create Mermaid flowchart string with node IDs that don't have spaces
+    // Create Mermaid flowchart string with proper syntax
+    // Note: Using parentheses () for node text instead of quotes to avoid syntax errors
     const mermaidChart = `flowchart TD
-    start["Start: ${sanitizedStart}"] --> process["${sanitizedTitle}"]
-    process --> end["End: ${sanitizedEnd}"]
-    process --> people["People: ${sanitizedPeople}"]
-    process --> systems["Systems: ${sanitizedSystems}"]
-    process --> painpoint["Challenge: ${sanitizedPainPoint}"]`;
+    start(Start: ${sanitizedStart}) --> process(${sanitizedTitle})
+    process --> end(End: ${sanitizedEnd})
+    process --> people(People: ${sanitizedPeople})
+    process --> systems(Systems: ${sanitizedSystems})
+    process --> painpoint(Challenge: ${sanitizedPainPoint})`;
 
     console.log("Generated Mermaid chart:", mermaidChart);
 
