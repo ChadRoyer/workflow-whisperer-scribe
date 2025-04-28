@@ -16,6 +16,27 @@ export const saveMessageToDatabase = async (message: Message, sessionId: string 
   }
 
   try {
+    // First check if the session exists before attempting to save
+    const { count, error: sessionCheckError } = await supabase
+      .from('sessions')
+      .select('*', { count: 'exact', head: true })
+      .eq('id', sessionId);
+    
+    if (sessionCheckError) {
+      console.error("Error checking session:", sessionCheckError);
+      return null;
+    }
+    
+    if (!count || count === 0) {
+      console.error("Session does not exist:", sessionId);
+      toast({
+        title: "Session Error",
+        description: "The session no longer exists. You may need to start a new chat.",
+        variant: "destructive",
+      });
+      return null;
+    }
+
     const { data, error } = await supabase
       .from('chat_messages')
       .insert({
