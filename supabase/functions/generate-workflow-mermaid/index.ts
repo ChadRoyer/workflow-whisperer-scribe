@@ -51,15 +51,17 @@ serve(async (req) => {
     const peopleList = workflow.people ? workflow.people.join(', ') : 'None';
     const systemsList = workflow.systems ? workflow.systems.join(', ') : 'None';
     
-    // Create Mermaid flowchart string
-    const mermaidChart = `graph TD;
-    subgraph Workflow: ${workflow.title}
+    // Create Mermaid flowchart string - using graph TD (top-down) format
+    const mermaidChart = `graph TD
+    subgraph "Workflow: ${workflow.title}"
         Start((Start: ${workflow.start_event || 'Not specified'})) --> MainPath([${workflow.title}])
         MainPath --> End((End: ${workflow.end_event || 'Not specified'}))
-        MainPath -- People Involved --> P(["${peopleList}"])
-        MainPath -- Systems Used --> S(["${systemsList}"])
-        MainPath -- Key Challenge --> PP(["${workflow.pain_point || 'Not specified'}"])
+        MainPath -- People --> P["${peopleList}"]
+        MainPath -- Systems --> S["${systemsList}"]
+        MainPath -- Challenge --> PP["${workflow.pain_point || 'Not specified'}"]
     end`;
+
+    console.log("Generated Mermaid chart:", mermaidChart);
 
     return new Response(
       JSON.stringify({ mermaidChart }),

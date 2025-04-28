@@ -13,15 +13,34 @@ export const ChatMessage = ({ isBot, message }: ChatMessageProps) => {
 
   useEffect(() => {
     const renderMermaidDiagram = async () => {
-      if (message.trim().startsWith('graph TD;') && mermaidRef.current) {
+      if (mermaidRef.current && isMermaidDiagram) {
         try {
-          mermaid.initialize({ startOnLoad: true });
-          const { svg } = await mermaid.render('mermaid-diagram', message);
+          // Initialize mermaid with desired configuration
+          mermaid.initialize({ 
+            startOnLoad: true,
+            theme: 'default',
+            securityLevel: 'loose'
+          });
+          
+          // Clear previous content
+          mermaidRef.current.innerHTML = '';
+          
+          // Create a unique ID for this diagram
+          const id = `mermaid-${Date.now()}`;
+          
+          // Render the diagram
+          const { svg } = await mermaid.render(id, message);
+          
           if (mermaidRef.current) {
             mermaidRef.current.innerHTML = svg;
           }
         } catch (error) {
           console.error('Failed to render Mermaid diagram:', error);
+          if (mermaidRef.current) {
+            mermaidRef.current.innerHTML = `<div class="p-2 border border-red-300 bg-red-50 text-red-800 rounded">
+              Error rendering diagram: ${(error as Error).message || 'Unknown error'}
+            </div>`;
+          }
         }
       }
     };
@@ -29,7 +48,8 @@ export const ChatMessage = ({ isBot, message }: ChatMessageProps) => {
     renderMermaidDiagram();
   }, [message]);
 
-  const isMermaidDiagram = message.trim().startsWith('graph TD;');
+  // Improved detection of Mermaid diagrams - check for "graph", "subgraph", or typical Mermaid syntax
+  const isMermaidDiagram = /^(graph|subgraph)\s+|flowchart\s+|sequenceDiagram|classDiagram|stateDiagram/i.test(message.trim());
 
   return (
     <div
@@ -45,7 +65,7 @@ export const ChatMessage = ({ isBot, message }: ChatMessageProps) => {
         )}
       >
         {isMermaidDiagram ? (
-          <div ref={mermaidRef} className="mermaid-diagram" />
+          <div ref={mermaidRef} className="mermaid-diagram overflow-auto max-w-full" />
         ) : (
           <p className="whitespace-pre-wrap">{message}</p>
         )}

@@ -1,3 +1,4 @@
+
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
@@ -93,6 +94,7 @@ serve(async (req) => {
         console.error("Error counting workflows:", countError);
       }
 
+      // Handle visualization request
       if (message.toLowerCase().includes('yes') && 
           messages[messages.length - 2]?.text?.includes('would you like to see a visual diagram')) {
         try {
@@ -121,8 +123,9 @@ serve(async (req) => {
             throw new Error(visualData.error);
           }
           
-          console.log("Successfully generated Mermaid diagram");
+          console.log("Successfully generated Mermaid diagram:", visualData.mermaidChart);
 
+          // Save the Mermaid diagram directly to the chat
           const { error: messageError } = await supabase
             .from('chat_messages')
             .insert({
@@ -135,6 +138,7 @@ serve(async (req) => {
             console.error("Error saving diagram message:", messageError);
           }
 
+          // Create follow-up question
           const followUpQuestion = count >= 10 
             ? "Now that we've captured quite a few workflows, would you like to continue or are you DONE for now?"
             : "Shall we document another workflow, or are you DONE for now?";
