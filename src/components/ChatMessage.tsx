@@ -20,7 +20,7 @@ export const ChatMessage = ({ isBot, message }: ChatMessageProps) => {
             startOnLoad: true,
             theme: 'default',
             securityLevel: 'loose',
-            logLevel: 5 // Add more verbose logging
+            logLevel: 5 // More verbose logging for debugging
           });
           
           // Clear previous content
@@ -29,6 +29,7 @@ export const ChatMessage = ({ isBot, message }: ChatMessageProps) => {
           // Create a unique ID for this diagram
           const id = `mermaid-${Date.now()}`;
           
+          // Log the message content for debugging
           console.log('Attempting to render Mermaid diagram with content:', message);
           
           // Render the diagram
@@ -52,8 +53,8 @@ export const ChatMessage = ({ isBot, message }: ChatMessageProps) => {
     renderMermaidDiagram();
   }, [message]);
 
-  // Improved detection of Mermaid diagrams - check for various Mermaid syntax patterns
-  const isMermaidDiagram = /^(graph|subgraph|flowchart|sequenceDiagram|classDiagram|stateDiagram)/i.test(message.trim());
+  // Updated detection for Mermaid diagrams to match all common patterns
+  const isMermaidDiagram = /^\s*(graph|flowchart|subgraph|sequenceDiagram|classDiagram|stateDiagram|gantt|pie|erDiagram)/i.test(message.trim());
 
   return (
     <div

@@ -20,6 +20,8 @@ serve(async (req) => {
       throw new Error('Workflow title is required');
     }
 
+    console.log(`Generating visualization for workflow titled: "${workflowTitle}"`);
+
     // Initialize Supabase client with service_role key for database access
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -39,6 +41,7 @@ serve(async (req) => {
     }
 
     if (!workflows || workflows.length === 0) {
+      console.error(`Workflow with title "${workflowTitle}" not found`);
       return new Response(
         JSON.stringify({ error: "Error: Workflow title not found." }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -46,20 +49,20 @@ serve(async (req) => {
     }
 
     const workflow = workflows[0];
+    console.log("Retrieved workflow data:", JSON.stringify(workflow));
     
     // Format arrays into comma-separated strings, handling null values
     const peopleList = workflow.people ? workflow.people.join(', ') : 'None';
     const systemsList = workflow.systems ? workflow.systems.join(', ') : 'None';
     
     // Create Mermaid flowchart string - using graph TD (top-down) format
+    // Important: This syntax must be valid Mermaid syntax
     const mermaidChart = `graph TD
-    subgraph "Workflow: ${workflow.title}"
-        Start((Start: ${workflow.start_event || 'Not specified'})) --> MainPath([${workflow.title}])
-        MainPath --> End((End: ${workflow.end_event || 'Not specified'}))
-        MainPath -- People --> P["${peopleList}"]
-        MainPath -- Systems --> S["${systemsList}"]
-        MainPath -- Challenge --> PP["${workflow.pain_point || 'Not specified'}"]
-    end`;
+    Start((Start: ${workflow.start_event || 'Not specified'})) --> MainPath([${workflow.title}])
+    MainPath --> End((End: ${workflow.end_event || 'Not specified'}))
+    MainPath -- People --> P["${peopleList}"]
+    MainPath -- Systems --> S["${systemsList}"]
+    MainPath -- Challenge --> PP["${workflow.pain_point || 'Not specified'}"]`;
 
     console.log("Generated Mermaid chart:", mermaidChart);
 

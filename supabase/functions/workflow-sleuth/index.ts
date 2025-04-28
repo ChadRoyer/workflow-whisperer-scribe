@@ -100,8 +100,9 @@ serve(async (req) => {
         try {
           console.log(`Generating visualization for workflow: ${functionArgs.title}`);
           
+          // Call our edge function to generate the Mermaid diagram
           const visualizationResponse = await fetch(
-            `https://jqrgqevteccqxnrmocuw.supabase.co/functions/v1/generate-workflow-mermaid`,
+            `${supabaseUrl}/functions/v1/generate-workflow-mermaid`,
             {
               method: 'POST',
               headers: {
@@ -123,20 +124,25 @@ serve(async (req) => {
             throw new Error(visualData.error);
           }
           
+          // Log the generated diagram for debugging
           console.log("Successfully generated Mermaid diagram:", visualData.mermaidChart);
 
           // Save the Mermaid diagram directly to the chat
-          const { error: messageError } = await supabase
+          const { data: messageData, error: messageError } = await supabase
             .from('chat_messages')
             .insert({
               session_id: sessionId,
               role: 'assistant',
               content: visualData.mermaidChart
-            });
+            })
+            .select();
 
           if (messageError) {
             console.error("Error saving diagram message:", messageError);
+            throw new Error(`Failed to save diagram: ${messageError.message}`);
           }
+          
+          console.log("Saved diagram to chat messages:", messageData);
 
           // Create follow-up question
           const followUpQuestion = count >= 10 

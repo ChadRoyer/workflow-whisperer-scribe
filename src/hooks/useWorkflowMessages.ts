@@ -120,6 +120,8 @@ export const useWorkflowMessages = ({
         
         // Handle additional follow-up message if provided
         if (data.nextMessage) {
+          console.log("Processing follow-up message:", data.nextMessage);
+          
           const followUpMessage = { text: data.nextMessage, isBot: true };
           const savedFollowUpMessage = await saveMessageToDatabase(followUpMessage, sessionId);
           
@@ -127,14 +129,17 @@ export const useWorkflowMessages = ({
             { id: savedFollowUpMessage.id, text: data.nextMessage, isBot: true, sessionId: savedFollowUpMessage.session_id } : 
             followUpMessage;
           
-          setMessages((prevMessages) => [...prevMessages, newFollowUpMessage] as Message[]);
+          // Add a slight delay before showing the follow-up message
+          setTimeout(() => {
+            setMessages(prevMessages => [...prevMessages, newFollowUpMessage]);
+          }, 500);
         }
 
       } catch (error) {
         console.error("Error calling edge function:", error);
         
         // Check if it's a timeout error
-        if (error.message?.includes('timeout')) {
+        if ((error as Error).message?.includes('timeout')) {
           toast({
             title: "Timeout",
             description: "The request took too long. Please try again.",
@@ -152,7 +157,6 @@ export const useWorkflowMessages = ({
           text: "I'm sorry, I encountered an error processing your message. Please try again.",
           isBot: true 
         };
-        // Don't try to save error message if session doesn't exist anymore
         
         setMessages([...updatedMessages, errorMessage]);
       } finally {
