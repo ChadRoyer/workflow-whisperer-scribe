@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
@@ -101,7 +100,6 @@ export const useSessionManagement = (currentSessionId: string | null) => {
     }
   }, [currentSessionId]);
 
-  // Fixed the realtime subscription TypeScript error
   useEffect(() => {
     // Create a channel for listening to session title updates
     const channel = supabase
