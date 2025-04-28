@@ -12,10 +12,12 @@ export const ChatMessage = ({ isBot, message }: ChatMessageProps) => {
   const mermaidRef = useRef<HTMLDivElement>(null);
   const [renderError, setRenderError] = useState<string | null>(null);
   const [isMermaidContent, setIsMermaidContent] = useState<boolean>(false);
+  const [diagramId, setDiagramId] = useState<string>(`mermaid-${Date.now()}`);
 
   // Initialize mermaid with secure, simplified configuration
   useEffect(() => {
     try {
+      // Configure mermaid with improved settings
       mermaid.initialize({
         startOnLoad: false,
         theme: 'default',
@@ -24,10 +26,10 @@ export const ChatMessage = ({ isBot, message }: ChatMessageProps) => {
         flowchart: {
           useMaxWidth: true,
           htmlLabels: true,
-          curve: 'linear' // Using linear curves for simpler rendering
+          curve: 'linear'
         }
       });
-      console.log("Mermaid initialized with simplified configuration");
+      console.log("Mermaid initialized in ChatMessage component");
     } catch (error) {
       console.error("Failed to initialize mermaid:", error);
     }
@@ -40,13 +42,23 @@ export const ChatMessage = ({ isBot, message }: ChatMessageProps) => {
       return;
     }
     
-    // More robust detection of Mermaid content
+    // Detect Mermaid content using the most reliable indicators
     const trimmedMessage = message.trim();
-    const isMermaid = /^(flowchart|graph|sequenceDiagram|classDiagram|stateDiagram|erDiagram|gantt|pie|gitGraph|journey|mindmap)/i.test(trimmedMessage);
+    
+    // Method 1: Check for explicit mermaid block markers
+    const hasMermaidCodeBlock = trimmedMessage.startsWith('```mermaid') || 
+                               trimmedMessage.includes('\n```mermaid');
+    
+    // Method 2: Check for graph/flowchart syntax patterns
+    const hasGraphSyntax = /^(%%.+\n)?(graph|flowchart)\s+(TB|TD|BT|RL|LR)/im.test(trimmedMessage);
+    
+    const isMermaid = hasMermaidCodeBlock || hasGraphSyntax;
     
     console.log(`Checking if message is Mermaid diagram: ${isMermaid ? 'YES' : 'NO'}`);
     if (isMermaid) {
-      console.log("Mermaid content detected:", trimmedMessage.substring(0, 100));
+      console.log("Mermaid content detected");
+      // Generate a new ID for each new diagram to avoid conflicts
+      setDiagramId(`mermaid-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`);
     }
     
     setIsMermaidContent(isMermaid);
@@ -66,11 +78,14 @@ export const ChatMessage = ({ isBot, message }: ChatMessageProps) => {
         }
         setRenderError(null);
         
-        // Create a unique ID for this diagram
-        const id = `mermaid-${Date.now()}`;
+        // Extract the mermaid code from markdown code blocks if present
+        let mermaidCode = message.trim();
+        if (mermaidCode.startsWith('```mermaid')) {
+          mermaidCode = mermaidCode.replace(/```mermaid\n/, '').replace(/\n```$/, '');
+        }
         
-        // Attempt to render the diagram with pre-sanitized content
-        const { svg } = await mermaid.render(id, message);
+        // Attempt to render the diagram with the sanitized content
+        const { svg } = await mermaid.render(diagramId, mermaidCode);
         
         // Insert the rendered SVG
         if (mermaidRef.current) {
@@ -102,15 +117,39 @@ export const ChatMessage = ({ isBot, message }: ChatMessageProps) => {
         
         // Extract parts from a basic flowchart
         const parts = message.split('\n');
-        const processedParts = parts.filter(part => part.includes('-->') || part.includes('['));
+        const processedParts = parts.filter(part => 
+          part.includes('-->') || 
+          part.includes('[') || 
+          part.includes('(') ||
+          part.includes('%%')
+        );
         
         if (processedParts.length > 0) {
           const listEl = document.createElement('ul');
           listEl.className = 'list-disc pl-5 mt-2 text-sm';
           
           processedParts.forEach(part => {
-            if (part.includes('[') && part.includes(']')) {
-              const content = part.substring(part.indexOf('[') + 1, part.lastIndexOf(']'));
+            // Extract node content from various formats
+            let content = null;
+            
+            if (part.startsWith('%%')) {
+              // Title comment
+              content = 'Title: ' + part.substring(2).trim();
+            } else if (part.includes('[') && part.includes(']')) {
+              // Square bracket nodes
+              content = part.substring(part.indexOf('[') + 1, part.lastIndexOf(']'));
+            } else if (part.includes('(') && part.includes(')')) {
+              // Round bracket nodes
+              content = part.substring(part.indexOf('(') + 1, part.lastIndexOf(')'));
+            } else if (part.includes('{') && part.includes('}')) {
+              // Curly bracket nodes
+              content = part.substring(part.indexOf('{') + 1, part.lastIndexOf('}'));
+            } else if (part.includes('-->')) {
+              // Arrow connections
+              content = 'Flow: ' + part.trim();
+            }
+            
+            if (content) {
               const item = document.createElement('li');
               item.textContent = content;
               listEl.appendChild(item);
@@ -132,7 +171,7 @@ export const ChatMessage = ({ isBot, message }: ChatMessageProps) => {
     }, 100);
     
     return () => clearTimeout(timer);
-  }, [message, isMermaidContent]);
+  }, [message, isMermaidContent, diagramId]);
 
   // Fallback for empty messages
   if (!message) {

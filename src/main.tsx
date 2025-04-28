@@ -56,7 +56,7 @@ try {
       useMaxWidth: true,
       htmlLabels: true,
       curve: 'linear'
-    },
+    }
     // Removed the invalid parseError property
   });
   

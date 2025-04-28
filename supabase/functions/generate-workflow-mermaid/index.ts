@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.0';
 
@@ -51,42 +50,29 @@ serve(async (req) => {
     const workflow = workflows[0];
     console.log("Retrieved workflow data:", JSON.stringify(workflow));
     
-    // Using extremely simple Mermaid syntax to avoid parsing issues
-    // Avoid using special characters completely
-    const sanitizeForMermaid = (text) => {
-      if (!text) return "Not specified";
-      
-      // Replace problematic characters and patterns
-      return text.replace(/[()[\]{}]/g, "_")  // Replace brackets with underscores
-                .replace(/"/g, "'")           // Replace double quotes with single quotes
-                .replace(/\\/g, "")           // Remove backslashes
-                .replace(/\n/g, " ")          // Replace newlines with spaces
-                .replace(/,/g, " ")           // Replace commas with spaces
-                .replace(/:/g, "-")           // Replace colons with hyphens
-                .replace(/;/g, " ")           // Replace semicolons with spaces
-                .trim();
+    // Transform data to expected format
+    const peopleArray = Array.isArray(workflow.people) ? workflow.people.map(person => {
+      // Assume all people are internal unless specified otherwise
+      return { name: person, type: "internal" };
+    }) : [];
+    
+    const systemsArray = Array.isArray(workflow.systems) ? workflow.systems.map(system => {
+      // Assume all systems are internal unless specified otherwise
+      return { name: system, type: "internal" };
+    }) : [];
+    
+    // Prepare the input for the diagram generator
+    const workflowData = {
+      title: workflow.title,
+      start_event: workflow.start_event,
+      end_event: workflow.end_event,
+      people: peopleArray,
+      systems: systemsArray,
+      pain_point: workflow.pain_point
     };
     
-    // Format arrays into strings and sanitize
-    const peopleList = workflow.people ? workflow.people.join(' ') : 'None';
-    const systemsList = workflow.systems ? workflow.systems.join(' ') : 'None';
-    
-    // Sanitize all input strings
-    const title = sanitizeForMermaid(workflow.title);
-    const startEvent = sanitizeForMermaid(workflow.start_event);
-    const endEvent = sanitizeForMermaid(workflow.end_event);
-    const people = sanitizeForMermaid(peopleList);
-    const systems = sanitizeForMermaid(systemsList);
-    const painPoint = sanitizeForMermaid(workflow.pain_point);
-    
-    // Generate a ultra-simple Mermaid diagram with absolutely minimal syntax
-    // Using the simplest flowchart format possible
-    const mermaidChart = `flowchart TD
-    A[Start] --> B[${title}]
-    B --> C[End]
-    B --> D[People]
-    B --> E[Systems]
-    B --> F[Challenge]`;
+    // Generate the mermaid diagram based on the structured specification
+    const mermaidChart = generateMermaidDiagram(workflowData);
     
     console.log("Generated Mermaid chart:", mermaidChart);
 
@@ -106,3 +92,87 @@ serve(async (req) => {
     );
   }
 });
+
+// Function to generate a mermaid diagram according to the specified rules
+function generateMermaidDiagram(data) {
+  try {
+    // Sanitize text for mermaid compatibility
+    const sanitize = (text) => {
+      if (!text) return "Unspecified";
+      return text
+        .replace(/["\\<>]/g, '') // Remove problematic characters
+        .replace(/[\r\n\t]/g, ' ') // Replace line breaks and tabs with spaces
+        .trim();
+    };
+    
+    const title = sanitize(data.title);
+    const startEvent = sanitize(data.start_event);
+    const endEvent = sanitize(data.end_event);
+    const painPoint = sanitize(data.pain_point);
+    
+    let diagram = `%% ${title}\ngraph TD\n`;
+    
+    // Start and end nodes
+    diagram += `  S(Start) -->|${startEvent}| `;
+    
+    // Add people nodes
+    const people = data.people || [];
+    for (let i = 0; i < people.length; i++) {
+      const person = people[i];
+      const nodeId = `P${i + 1}`;
+      const className = person.type === 'external' ? 'externalPerson' : 'internalPerson';
+      const personName = sanitize(person.name);
+      
+      if (i === 0) {
+        // First person connects from start
+        diagram += `${nodeId}["${personName}"]:::${className}\n`;
+      } else {
+        // Connect from previous node
+        const prevNodeId = i === 0 ? 'S' : (people[i-1] ? `P${i}` : 'S');
+        diagram += `  ${prevNodeId} --> ${nodeId}["${personName}"]:::${className}\n`;
+      }
+      
+      // Last person needs connection to the next element
+      if (i === people.length - 1) {
+        lastNodeId = nodeId;
+      }
+    }
+    
+    // Keep track of the last node to connect from
+    let lastNodeId = people.length > 0 ? `P${people.length}` : 'S';
+    
+    // Add system nodes
+    const systems = data.systems || [];
+    for (let i = 0; i < systems.length; i++) {
+      const system = systems[i];
+      const nodeId = `S${i + 1}`;
+      const className = system.type === 'external' ? 'externalSystem' : 'internalSystem';
+      const systemName = sanitize(system.name);
+      
+      diagram += `  ${lastNodeId} --> ${nodeId}["['db'] ${systemName}"]:::${className}\n`;
+      lastNodeId = nodeId;
+    }
+    
+    // Add pain point if available
+    if (painPoint && painPoint !== "Unspecified") {
+      diagram += `  ${lastNodeId} --> PP{{"⚠︎ ${painPoint}"}}:::pain\n`;
+      diagram += `  PP --> E(End)\n`;
+    } else {
+      // Connect last node to end
+      diagram += `  ${lastNodeId} -->|${endEvent}| E(End)\n`;
+    }
+    
+    // Add style classes
+    diagram += `  classDef internalPerson fill:#E0F7FA,stroke:#0288D1,stroke-width:2;\n`;
+    diagram += `  classDef externalPerson fill:#FFF3E0,stroke:#FB8C00,stroke-width:2,stroke-dasharray:5 5;\n`;
+    diagram += `  classDef internalSystem fill:#E8EAF6,stroke:#3F51B5,stroke-width:2;\n`;
+    diagram += `  classDef externalSystem fill:#EFEBE9,stroke:#8D6E63,stroke-width:2,stroke-dasharray:5 5;\n`;
+    diagram += `  classDef pain fill:#FFEBEE,stroke:#C62828,stroke-width:4,color:#C62828;\n`;
+    
+    return diagram;
+  } catch (error) {
+    console.error("Error generating Mermaid diagram:", error);
+    // Return a simple fallback diagram in case of errors
+    return `graph TD\n  A[Error: Could not generate diagram] --> B[Please try again]`;
+  }
+}
