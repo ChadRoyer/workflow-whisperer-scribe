@@ -69,8 +69,8 @@ export const useWorkflowMessages = ({
         let timeoutId: ReturnType<typeof setTimeout>;
         const timeoutPromise = new Promise<never>((_, reject) => {
           timeoutId = setTimeout(() => {
-            reject(new Error('Request timeout after 10 seconds'));
-          }, 10000);
+            reject(new Error('Request timeout after 30 seconds'));
+          }, 30000); // Increased timeout to 30 seconds
         });
 
         console.log("Calling workflow-sleuth function with:", {
@@ -105,18 +105,28 @@ export const useWorkflowMessages = ({
 
         console.log("Received response from workflow-sleuth:", data);
         
-        if (!data || typeof data.reply !== 'string') {
+        if (!data) {
           throw new Error('Invalid response from server');
         }
         
-        const botMessage = { text: data.reply, isBot: true };
-        const savedBotMessage = await saveMessageToDatabase(botMessage, sessionId);
-        
-        const newBotMessage = savedBotMessage ? 
-          { id: savedBotMessage.id, text: data.reply, isBot: true, sessionId: savedBotMessage.session_id } : 
-          botMessage;
-        
-        setMessages([...updatedMessages, newBotMessage]);
+        // Handle diagram responses
+        if (data.reply && typeof data.reply === 'string') {
+          const botMessage = { text: data.reply, isBot: true };
+          const savedBotMessage = await saveMessageToDatabase(botMessage, sessionId);
+          
+          const newBotMessage = savedBotMessage ? 
+            { id: savedBotMessage.id, text: data.reply, isBot: true, sessionId: savedBotMessage.session_id } : 
+            botMessage;
+          
+          // Determine if this is a Mermaid diagram
+          const isMermaidDiagram = /^\s*(flowchart|graph|sequenceDiagram|classDiagram|stateDiagram|gantt|pie|erDiagram|gitGraph|journey|mindmap)/i.test(data.reply.trim());
+          
+          if (isMermaidDiagram) {
+            console.log("Detected Mermaid diagram in response:", data.reply.substring(0, 50) + "...");
+          }
+          
+          setMessages([...updatedMessages, newBotMessage]);
+        }
         
         // Handle additional follow-up message if provided
         if (data.nextMessage) {

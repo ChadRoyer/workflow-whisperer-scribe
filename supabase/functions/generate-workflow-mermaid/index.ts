@@ -55,14 +55,13 @@ serve(async (req) => {
     const peopleList = workflow.people ? workflow.people.join(', ') : 'None';
     const systemsList = workflow.systems ? workflow.systems.join(', ') : 'None';
     
-    // Create Mermaid flowchart string - using graph TD (top-down) format
-    // Important: This syntax must be valid Mermaid syntax
-    const mermaidChart = `graph TD
-    Start((Start: ${workflow.start_event || 'Not specified'})) --> MainPath([${workflow.title}])
-    MainPath --> End((End: ${workflow.end_event || 'Not specified'}))
-    MainPath -- People --> P["${peopleList}"]
-    MainPath -- Systems --> S["${systemsList}"]
-    MainPath -- Challenge --> PP["${workflow.pain_point || 'Not specified'}"]`;
+    // Create Mermaid flowchart string - ENSURE VALID SYNTAX
+    const mermaidChart = `flowchart TD
+    Start([Start: ${workflow.start_event || 'Not specified'}]) --> Process
+    Process[${workflow.title}] --> End([End: ${workflow.end_event || 'Not specified'}])
+    Process -- People --> People[${peopleList}]
+    Process -- Systems --> Systems[${systemsList}]
+    Process -- Challenge --> PainPoint["${workflow.pain_point || 'Not specified'}"]`;
 
     console.log("Generated Mermaid chart:", mermaidChart);
 

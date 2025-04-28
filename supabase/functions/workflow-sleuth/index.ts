@@ -42,6 +42,111 @@ serve(async (req) => {
       }))
     ];
 
+    // If this is a request for a diagram specifically
+    if (message.toLowerCase().includes('diagram') || message.toLowerCase().includes('show me')) {
+      console.log("Detected diagram request for recent workflow");
+      
+      // Find the most recent workflow for this session
+      const { data: workflows, error: workflowError } = await supabase
+        .from('workflows')
+        .select('title')
+        .eq('session_id', sessionId)
+        .order('created_at', { ascending: false })
+        .limit(1);
+        
+      if (workflowError) {
+        console.error("Error fetching recent workflow:", workflowError);
+        return new Response(JSON.stringify({ 
+          reply: "I encountered an error while retrieving your recent workflow. Please try again.",
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      
+      if (!workflows || workflows.length === 0) {
+        console.log("No workflows found for session", sessionId);
+        return new Response(JSON.stringify({ 
+          reply: "I don't have any saved workflows to visualize yet. Let's document a workflow first.",
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      
+      const workflowTitle = workflows[0].title;
+      console.log(`Found recent workflow: ${workflowTitle}. Generating visualization...`);
+      
+      try {
+        // Call the edge function to generate Mermaid diagram
+        const visualizationResponse = await fetch(
+          `${supabaseUrl}/functions/v1/generate-workflow-mermaid`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${supabaseServiceKey}`
+            },
+            body: JSON.stringify({ workflowTitle })
+          }
+        );
+        
+        if (!visualizationResponse.ok) {
+          console.error(`Visualization request failed with status: ${visualizationResponse.status}`);
+          throw new Error(`Visualization request failed with status: ${visualizationResponse.status}`);
+        }
+        
+        const visualData = await visualizationResponse.json();
+        
+        if (visualData.error) {
+          console.error("Visualization error:", visualData.error);
+          throw new Error(visualData.error);
+        }
+        
+        // Save the Mermaid diagram to chat messages
+        const { data: messageData, error: messageError } = await supabase
+          .from('chat_messages')
+          .insert({
+            session_id: sessionId,
+            role: 'assistant',
+            content: visualData.mermaidChart
+          })
+          .select();
+          
+        if (messageError) {
+          console.error("Error saving diagram message:", messageError);
+          throw new Error(`Failed to save diagram: ${messageError.message}`);
+        }
+        
+        console.log("Successfully generated and saved Mermaid diagram!");
+        
+        // Create a follow-up message
+        const followUpQuestion = "Shall we document another workflow, or are you DONE for now?";
+        
+        await supabase
+          .from('chat_messages')
+          .insert({
+            session_id: sessionId,
+            role: 'assistant',
+            content: followUpQuestion
+          });
+          
+        return new Response(
+          JSON.stringify({ 
+            reply: visualData.mermaidChart, 
+            nextMessage: followUpQuestion
+          }), 
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      } catch (error) {
+        console.error("Error generating visualization:", error);
+        return new Response(
+          JSON.stringify({ 
+            reply: "I encountered an error while generating the visualization. Would you like to try again or document another workflow?",
+          }), 
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
     const response = await processWorkflowChat(
       openAIApiKey!,
       systemInstruction,
