@@ -13,40 +13,35 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const systemPrompt = `You are Expert-Conductor, an advanced AI consultant specialized in AI-based workflow automation opportunities. 
-Your task is to analyze detailed workflows and identify specific operational steps that can be optimized, automated, or enhanced with AI technology.
+const systemPrompt = `You are "Workflow-AI Conductor".
 
-ANALYSIS APPROACH:
-1. Study the provided workflow data (title, start event, end event, people involved, systems used, pain points).
-2. Identify steps or processes that are manual, time-consuming, repetitive, or error-prone.
-3. For each identified opportunity, determine a specific AI solution including:
-   - The exact step/point in the workflow to apply the solution
-   - Specific AI tool or technology category that's appropriate
-   - Complexity of implementation (Low/Medium/High)
-   - Estimated ROI (1-10, where 10 is highest) based on time saved, error reduction, etc.
+OBJECTIVE  
+For the given workflow JSON, list practical AI interventions a mid-size business
+could deploy within 90 days to remove bottlenecks, reduce cost, or boost speed.
 
-FORMAT RESPONSES as structured data:
+CONSTRAINTS  
+• Use web search sparingly (≤ 1 call per workflow step).  
+• Output only deployable, reasonably priced tech (Zapier, UiPath, Vertex AI, etc.).  
+• If no AI uplift exists for a step, skip it.  
+• Final answer must be a **JSON array**; nothing else.
+
+CONDUCTOR FORMAT  
+1. THINK: restate objective & key pain points.  
+2. PLAN: bullet steps (max 6) you will follow.  
+3. EXECUTE: follow plan step-by-step; when you need external info, call the
+   \`search_web\` tool with a focused query; record RESULT.  
+4. DELIVER: JSON array with objects:
+
 {
-  "opportunities": [
-    {
-      "step_label": "Clear label for the workflow step",
-      "suggestion": "Concise, actionable recommendation",
-      "ai_tool": "Specific tool or technology category (e.g., 'GPT-4', 'Computer Vision', 'RPA')",
-      "complexity": "Low|Medium|High",
-      "roi_score": 1-10 integer,
-      "sources": [{"title": "Source title", "url": "source URL"}]
-    }
-  ]
+  "step_label":  "<node or pain label>",
+  "suggestion":  "<plain-English automation idea>",
+  "ai_tool":     "<named SaaS / open-source>",
+  "complexity":  "Low|Medium|High",
+  "roi_score":   1-5,
+  "sources":     [ { "title":"...", "url":"..." } ]
 }
 
-Examples of good opportunities:
-- Document processing steps that use OCR + LLMs
-- Decision points that can use prediction models
-- Client communications that can use LLM-powered responses
-- Manual data entry that can be automated
-- Scheduling tasks that can be optimized with AI
-
-Use clear, business-focused language avoiding technical jargon. Ensure each solution addresses a specific pain point in the workflow.`;
+Return ONLY that JSON array after EXECUTE is done.`;
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -109,7 +104,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: "gpt-4.1",
+        model: "gpt-4o",
         messages: [
           { role: "system", content: "Determine 2-3 specific search queries to find tools and solutions for this workflow." },
           { role: "user", content: `Generate search queries to find AI tools and solutions for this workflow: ${workflowDetails}` }
@@ -188,7 +183,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: "gpt-4.1",
+        model: "gpt-4o",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: `Analyze this workflow and provide specific AI automation opportunities:\n${workflowDetails}` },
@@ -208,12 +203,21 @@ serve(async (req) => {
       
       // Try to extract JSON from the response
       const jsonMatch = content.match(/```json\n([\s\S]*?)\n```/) || 
-                        content.match(/\{[\s\S]*"opportunities"[\s\S]*\}/);
+                        content.match(/\{[\s\S]*"step_label"[\s\S]*\}/) ||
+                        content.match(/\[[\s\S]*\{[\s\S]*"step_label"[\s\S]*\}[\s\S]*\]/);
       
       if (jsonMatch) {
         const jsonString = jsonMatch[1] || jsonMatch[0];
-        const parsedData = JSON.parse(jsonString.trim());
-        solutions = parsedData.opportunities || [];
+        try {
+          const parsedData = JSON.parse(jsonString.trim());
+          // Handle both array format and object with opportunities format
+          solutions = Array.isArray(parsedData) ? parsedData : (parsedData.opportunities || []);
+        } catch (parseError) {
+          console.error("Error parsing JSON string:", parseError);
+          console.log("Failed JSON string:", jsonString);
+          // Fall back to regex pattern matching if JSON parsing fails
+          solutions = [];
+        }
       } else {
         // Fallback to extract from raw text if no JSON found
         console.warn("No valid JSON found in response, attempting to parse structured text");
@@ -225,18 +229,31 @@ serve(async (req) => {
       solutions = [];
     }
 
+    // Validate solutions before inserting
+    const validSolutions = solutions.filter(solution => {
+      return solution && 
+        typeof solution === 'object' && 
+        solution.step_label && 
+        solution.suggestion && 
+        solution.ai_tool;
+    });
+    
+    if (validSolutions.length === 0) {
+      console.warn("No valid solutions were found in the AI response");
+    }
+
     // Store solutions in database
-    if (solutions.length > 0) {
+    if (validSolutions.length > 0) {
       const { error: insertError } = await supabase
         .from('ai_solutions')
         .insert(
-          solutions.map(solution => ({
+          validSolutions.map(solution => ({
             workflow_id: workflowId,
             step_label: solution.step_label,
             suggestion: solution.suggestion,
             ai_tool: solution.ai_tool,
-            complexity: solution.complexity,
-            roi_score: solution.roi_score,
+            complexity: solution.complexity || 'Medium',
+            roi_score: solution.roi_score || 3,
             sources: solution.sources || null
           }))
         );
@@ -246,7 +263,7 @@ serve(async (req) => {
         throw new Error(`Failed to save AI solutions: ${insertError.message}`);
       }
       
-      console.log(`Successfully saved ${solutions.length} AI solutions for workflow ${workflowId}`);
+      console.log(`Successfully saved ${validSolutions.length} AI solutions for workflow ${workflowId}`);
     } else {
       console.warn("No solutions were generated from the AI response");
     }
@@ -255,7 +272,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: true, 
-        solutions,
+        solutions: validSolutions,
         searchQueries: searches,
         webResultsCount: uniqueWebResults.length
       }),
