@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -62,7 +63,7 @@ export const AISolutionsDisplay: React.FC<AISolutionsDisplayProps> = ({ workflow
       
       // Call our edge function to generate solutions
       const { data, error } = await supabase.functions.invoke('generate-ai-solutions', {
-        body: { workflowId }
+        body: { workflow_id: workflowId }
       });
 
       if (error) {
@@ -94,7 +95,7 @@ export const AISolutionsDisplay: React.FC<AISolutionsDisplayProps> = ({ workflow
   };
 
   // Fetch existing solutions on component mount
-  React.useEffect(() => {
+  useEffect(() => {
     fetchExistingSolutions();
   }, [workflowId]);
 
