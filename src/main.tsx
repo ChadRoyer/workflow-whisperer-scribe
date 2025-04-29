@@ -47,19 +47,22 @@ if (!document.getElementById("root")) {
 
 // Initialize Mermaid globally with robust error handling
 try {
-  mermaid.initialize({
-    startOnLoad: false,
-    securityLevel: 'loose',
-    theme: 'default',
-    logLevel: 1,
-    flowchart: {
-      useMaxWidth: true,
-      htmlLabels: true,
-      curve: 'linear'
-    }
-  });
-  
-  console.log('Mermaid initialized globally with enhanced error handling');
+  // Check if mermaid is already initialized to prevent duplicate initialization
+  if (!window.mermaidInitialized) {
+    mermaid.initialize({
+      startOnLoad: false,
+      securityLevel: 'loose',
+      theme: 'default',
+      logLevel: 1,
+      flowchart: {
+        useMaxWidth: true,
+        htmlLabels: true,
+        curve: 'linear'
+      }
+    });
+    window.mermaidInitialized = true;
+    console.log('Mermaid initialized globally with enhanced error handling');
+  }
 } catch (error) {
   console.error('Failed to initialize Mermaid globally:', error);
 }
