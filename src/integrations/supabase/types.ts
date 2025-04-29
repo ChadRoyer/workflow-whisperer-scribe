@@ -9,6 +9,50 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      ai_solutions: {
+        Row: {
+          ai_tool: string | null
+          complexity: string | null
+          created_at: string | null
+          id: string
+          roi_score: number | null
+          sources: Json | null
+          step_label: string | null
+          suggestion: string | null
+          workflow_id: string | null
+        }
+        Insert: {
+          ai_tool?: string | null
+          complexity?: string | null
+          created_at?: string | null
+          id?: string
+          roi_score?: number | null
+          sources?: Json | null
+          step_label?: string | null
+          suggestion?: string | null
+          workflow_id?: string | null
+        }
+        Update: {
+          ai_tool?: string | null
+          complexity?: string | null
+          created_at?: string | null
+          id?: string
+          roi_score?: number | null
+          sources?: Json | null
+          step_label?: string | null
+          suggestion?: string | null
+          workflow_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_solutions_workflow_id_fkey"
+            columns: ["workflow_id"]
+            isOneToOne: false
+            referencedRelation: "workflows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_messages: {
         Row: {
           content: string

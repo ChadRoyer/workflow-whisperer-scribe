@@ -6,3 +6,6 @@ verify_jwt = false
 
 [functions.generate-workflow-mermaid]
 verify_jwt = false
+
+[functions.generate-ai-solutions]
+verify_jwt = false
