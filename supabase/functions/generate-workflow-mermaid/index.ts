@@ -111,10 +111,11 @@ function generateMermaidDiagram(data) {
     const endEvent = sanitize(data.end_event);
     const painPoint = sanitize(data.pain_point);
     
-    let diagram = `%% ${title}\ngraph TD\n`;
+    // Use a more compatible mermaid syntax - flowchart instead of graph TD
+    let diagram = `%% ${title}\nflowchart TD\n`;
     
-    // Start and end nodes
-    diagram += `  S(Start) -->|${startEvent}| `;
+    // Start and end nodes - use standard arrow syntax
+    diagram += `  S(Start) --> `;
     
     // Initialize lastNodeId before using it
     let lastNodeId = 'S';
@@ -148,7 +149,7 @@ function generateMermaidDiagram(data) {
       const className = system.type === 'external' ? 'externalSystem' : 'internalSystem';
       const systemName = sanitize(system.name);
       
-      diagram += `  ${lastNodeId} --> ${nodeId}["['db'] ${systemName}"]:::${className}\n`;
+      diagram += `  ${lastNodeId} --> ${nodeId}["${systemName}"]:::${className}\n`;
       lastNodeId = nodeId;
     }
     
@@ -158,7 +159,7 @@ function generateMermaidDiagram(data) {
       diagram += `  PP --> E(End)\n`;
     } else {
       // Connect last node to end
-      diagram += `  ${lastNodeId} -->|${endEvent}| E(End)\n`;
+      diagram += `  ${lastNodeId} --> E(End)\n`;
     }
     
     // Add style classes
@@ -172,6 +173,6 @@ function generateMermaidDiagram(data) {
   } catch (error) {
     console.error("Error generating Mermaid diagram:", error);
     // Return a simple fallback diagram in case of errors
-    return `graph TD\n  A[Error: Could not generate diagram] --> B[Please try again]`;
+    return `flowchart TD\n  A[Error: Could not generate diagram] --> B[Please try again]`;
   }
 }

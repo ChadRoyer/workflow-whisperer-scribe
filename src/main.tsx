@@ -58,7 +58,10 @@ try {
         useMaxWidth: true,
         htmlLabels: true,
         curve: 'linear'
-      }
+      },
+      // Add longer timeouts and more permissive settings
+      deterministicIds: false,
+      arrowMarkerAbsolute: false
     });
     window.mermaidInitialized = true;
     console.log('Mermaid initialized globally with enhanced error handling');
