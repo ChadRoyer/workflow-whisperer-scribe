@@ -29,3 +29,5 @@ CONDUCTOR FORMAT
 }
 
 Return ONLY that JSON array after EXECUTE is done.`;
+
+export default aiSolutionsSystemPrompt;
