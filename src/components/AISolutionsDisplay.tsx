@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,18 +6,7 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { ArrowUpRight, Lightbulb, Loader2 } from "lucide-react";
-
-interface AISolution {
-  id?: string;
-  workflow_id: string;
-  step_label: string;
-  suggestion: string;
-  ai_tool: string;
-  complexity: string;
-  roi_score: number;
-  sources?: { title: string; url: string }[];
-  created_at?: string;
-}
+import { AISolution } from '@/types';
 
 interface AISolutionsDisplayProps {
   workflowId: string;
@@ -45,7 +33,13 @@ export const AISolutionsDisplay: React.FC<AISolutionsDisplayProps> = ({ workflow
       }
 
       if (data && data.length > 0) {
-        setSolutions(data);
+        // Transform the data to ensure sources is correctly typed
+        const typedSolutions: AISolution[] = data.map(solution => ({
+          ...solution,
+          sources: solution.sources as { title: string; url: string }[] || []
+        }));
+        
+        setSolutions(typedSolutions);
         setHasGenerated(true);
       } else {
         setSolutions([]);

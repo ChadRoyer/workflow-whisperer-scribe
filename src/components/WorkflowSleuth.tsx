@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useRef } from "react";
-import { ChatMessage } from "./ChatMessage";
+import ChatMessage from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
 import { ChatHistory } from "./chat/ChatHistory";
 import { SidebarProvider } from "@/components/ui/sidebar";
@@ -9,7 +9,7 @@ import { useWorkflowMessages } from "@/hooks/useWorkflowMessages";
 import { useSessionTitle } from "@/hooks/useSessionTitle";
 import { useSessionManagement } from "./chat/useSessionManagement";
 import { toast } from "@/components/ui/use-toast";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Loader2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -156,8 +156,8 @@ export const WorkflowSleuth = () => {
             messages.map((message, index) => (
               <ChatMessage
                 key={message.id || index}
-                isBot={message.isBot}
-                message={message.text}
+                message={message}
+                isLastMessage={index === messages.length - 1}
               />
             ))
           )}
