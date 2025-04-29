@@ -13,6 +13,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Import the system prompt
 const systemPrompt = `You are "Workflow-AI Conductor".
 
 OBJECTIVE  
