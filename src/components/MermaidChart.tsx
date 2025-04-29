@@ -42,8 +42,7 @@ const MermaidChart: React.FC<MermaidChartProps> = ({ chart, workflowId, workflow
           titleTopMargin: 25,
           barHeight: 20,
           barGap: 4,
-          topPadding: 50,
-          sidePadding: 50
+          topPadding: 50
         },
         // Allow additional time for parsing
         deterministicIds: false,
@@ -132,7 +131,7 @@ const MermaidChart: React.FC<MermaidChartProps> = ({ chart, workflowId, workflow
       
       // Call the edge function
       const res = await supabase.functions.invoke('generate-ai-solutions', {
-        body: { workflow_id: workflowId }
+        body: { workflowId }
       });
       
       const data = res.data;

@@ -3,7 +3,37 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
 import { webSearch } from "../lib/webSearch.ts";
-import { aiSolutionsSystemPrompt } from "../../src/prompts/aiSolutionsPrompt.ts";
+
+// Define system prompt directly in the edge function rather than importing
+const aiSolutionsSystemPrompt = `You are "Workflow-AI Conductor".
+
+OBJECTIVE  
+For the given workflow JSON, list practical AI interventions a mid-size business
+could deploy within 90 days to remove bottlenecks, reduce cost, or boost speed.
+
+CONSTRAINTS  
+• Use web search sparingly (≤ 1 call per workflow step).  
+• Output only deployable, reasonably priced tech (Zapier, UiPath, Vertex AI, etc.).  
+• If no AI uplift exists for a step, skip it.  
+• Final answer must be a **JSON array**; nothing else.
+
+CONDUCTOR FORMAT  
+1. THINK: restate objective & key pain points.  
+2. PLAN: bullet steps (max 6) you will follow.  
+3. EXECUTE: follow plan step-by-step; when you need external info, call the
+   \`search_web\` tool with a focused query; record RESULT.  
+4. DELIVER: JSON array with objects:
+
+{
+  "step_label":  "<node or pain label>",
+  "suggestion":  "<plain-English automation idea>",
+  "ai_tool":     "<named SaaS / open-source>",
+  "complexity":  "Low|Medium|High",
+  "roi_score":   1-5,
+  "sources":     [ { "title":"...", "url":"..." } ]
+}
+
+Return ONLY that JSON array after EXECUTE is done.`;
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
