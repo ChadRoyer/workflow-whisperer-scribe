@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.0';
 
@@ -115,6 +116,9 @@ function generateMermaidDiagram(data) {
     // Start and end nodes
     diagram += `  S(Start) -->|${startEvent}| `;
     
+    // Initialize lastNodeId before using it
+    let lastNodeId = 'S';
+    
     // Add people nodes
     const people = data.people || [];
     for (let i = 0; i < people.length; i++) {
@@ -132,14 +136,9 @@ function generateMermaidDiagram(data) {
         diagram += `  ${prevNodeId} --> ${nodeId}["${personName}"]:::${className}\n`;
       }
       
-      // Last person needs connection to the next element
-      if (i === people.length - 1) {
-        lastNodeId = nodeId;
-      }
+      // Update the last node ID
+      lastNodeId = nodeId;
     }
-    
-    // Keep track of the last node to connect from
-    let lastNodeId = people.length > 0 ? `P${people.length}` : 'S';
     
     // Add system nodes
     const systems = data.systems || [];

@@ -51,8 +51,11 @@ export const ChatMessage = ({ isBot, message }: ChatMessageProps) => {
     
     // Method 2: Check for graph/flowchart syntax patterns
     const hasGraphSyntax = /^(%%.+\n)?(graph|flowchart)\s+(TB|TD|BT|RL|LR)/im.test(trimmedMessage);
+
+    // Method 3: Check for class definitions which are common in our workflow diagrams
+    const hasClassDef = /classDef\s+\w+/.test(trimmedMessage);
     
-    const isMermaid = hasMermaidCodeBlock || hasGraphSyntax;
+    const isMermaid = hasMermaidCodeBlock || hasGraphSyntax || hasClassDef;
     
     console.log(`Checking if message is Mermaid diagram: ${isMermaid ? 'YES' : 'NO'}`);
     if (isMermaid) {
@@ -82,6 +85,14 @@ export const ChatMessage = ({ isBot, message }: ChatMessageProps) => {
         let mermaidCode = message.trim();
         if (mermaidCode.startsWith('```mermaid')) {
           mermaidCode = mermaidCode.replace(/```mermaid\n/, '').replace(/\n```$/, '');
+        }
+
+        // Log the diagram code for debugging
+        console.log("Processing Mermaid code:", mermaidCode.substring(0, 100) + "...");
+        
+        // Ensure all node connections are properly formatted
+        if (!mermaidCode.includes('-->') && !mermaidCode.includes('==>')) {
+          throw new Error('Invalid diagram: No connections between nodes');
         }
         
         // Attempt to render the diagram with the sanitized content

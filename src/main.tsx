@@ -57,7 +57,6 @@ try {
       htmlLabels: true,
       curve: 'linear'
     }
-    // Removed the invalid parseError property
   });
   
   console.log('Mermaid initialized globally with enhanced error handling');
