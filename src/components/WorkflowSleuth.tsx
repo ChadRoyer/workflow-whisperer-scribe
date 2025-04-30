@@ -12,7 +12,6 @@ import { toast } from "@/components/ui/use-toast";
 import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useAuth } from "@/contexts/AuthContext";
-import { mermaidLiveLink } from "@/utils/mermaidLiveLink";
 
 export const WorkflowSleuth = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -105,37 +104,6 @@ export const WorkflowSleuth = () => {
     scrollToBottom();
   }, [messages]);
 
-  // Process messages with mermaid content for correct link generation
-  const processMessages = (msgs) => {
-    const newMessages = [];
-    
-    for (const m of msgs) {
-      // Only process bot messages that contain mermaid code blocks
-      if (m.isBot && m.text && m.text.includes('```mermaid')) {
-        // find inner code between the fences
-        const mermaidMatch = m.text.match(/```mermaid[^\n]*\n([\s\S]*?)```/i);
-        
-        if (mermaidMatch) {
-          const code = mermaidMatch[1];      // NOT [0] - explicitly name for clarity
-          const link = mermaidLiveLink(code);
-          
-          newMessages.push({
-            ...m,
-            text: "🗺️ Your workflow diagram is ready: " +
-              `**[Open full-screen ↗](${link})**` +
-              "\n\n*(zoom, edit, export in Mermaid-Live)*"
-          });
-          
-          continue; // DO NOT push the original message
-        }
-      }
-      // Add the original message for non-mermaid messages or if processing failed
-      newMessages.push(m);
-    }
-    
-    return newMessages;
-  };
-
   // Ensure app doesn't crash if userInfo is not available
   if (!userInfo) {
     return (
@@ -155,16 +123,6 @@ export const WorkflowSleuth = () => {
       setRenderError(`Initialization error: ${(error as Error).message}`);
     }
   }, []);
-
-  // Safely process messages with error handling
-  let processedMessages = [];
-  try {
-    processedMessages = processMessages(messages);
-  } catch (error) {
-    console.error("Error processing messages:", error);
-    processedMessages = messages; // Use original messages if processing fails
-    setRenderError("Error processing messages. Some features may be unavailable.");
-  }
 
   return (
     <div className="flex h-[80vh] w-full mx-auto overflow-hidden">
@@ -188,18 +146,18 @@ export const WorkflowSleuth = () => {
               </AlertDescription>
             </Alert>
           )}
-          {processedMessages.length === 0 && !isLoading && !initializationError && !renderError ? (
+          {messages.length === 0 && !isLoading && !initializationError && !renderError ? (
             <div className="flex h-full items-center justify-center">
               <p className="text-muted-foreground">
                 {isInitialized ? "No messages yet" : "Initializing chat for " + (userInfo?.companyName || 'your company') + "..."}
               </p>
             </div>
           ) : (
-            processedMessages.map((message, index) => (
+            messages.map((message, index) => (
               <ChatMessage
                 key={message.id || index}
                 message={message}
-                isLastMessage={index === processedMessages.length - 1}
+                isLastMessage={index === messages.length - 1}
               />
             ))
           )}

@@ -2,6 +2,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { saveMessageToDatabase } from "@/services/messages";
+import { mermaidLiveLink } from "@/utils/mermaidLiveLink";
 
 interface Message {
   id?: string;
@@ -109,13 +110,30 @@ export const useWorkflowMessages = ({
           throw new Error('Invalid response from server');
         }
         
-        // Handle both diagram responses and regular text responses
+        // Process the bot response before adding it to state
         if (data.reply && typeof data.reply === 'string') {
-          const botMessage = { text: data.reply, isBot: true };
+          let replyContent = data.reply;
+          
+          // Process mermaid content before it hits the DOM
+          if (replyContent.includes("```mermaid")) {
+            const mermaidMatch = replyContent.match(/```mermaid[^\n]*\n([\s\S]*?)```/i);
+            
+            if (mermaidMatch) {
+              const inner = mermaidMatch[1];
+              const link = mermaidLiveLink(inner);
+              
+              replyContent = 
+                `🗺️ Your workflow diagram is ready: ` +
+                `**[Open full-screen ↗](${link})**\n\n` +
+                `*(zoom, edit, export in Mermaid-Live)*`;
+            }
+          }
+          
+          const botMessage = { text: replyContent, isBot: true };
           const savedBotMessage = await saveMessageToDatabase(botMessage, sessionId);
           
           const newBotMessage = savedBotMessage ? 
-            { id: savedBotMessage.id, text: data.reply, isBot: true, sessionId: savedBotMessage.session_id } : 
+            { id: savedBotMessage.id, text: replyContent, isBot: true, sessionId: savedBotMessage.session_id } : 
             botMessage;
           
           setMessages(prevMessages => [...prevMessages, newBotMessage]);
@@ -125,11 +143,28 @@ export const useWorkflowMessages = ({
         if (data.nextMessage) {
           console.log("Processing follow-up message:", data.nextMessage);
           
-          const followUpMessage = { text: data.nextMessage, isBot: true };
+          // Also transform the follow-up message if it contains mermaid
+          let followUpContent = data.nextMessage;
+          
+          if (followUpContent.includes("```mermaid")) {
+            const mermaidMatch = followUpContent.match(/```mermaid[^\n]*\n([\s\S]*?)```/i);
+            
+            if (mermaidMatch) {
+              const inner = mermaidMatch[1];
+              const link = mermaidLiveLink(inner);
+              
+              followUpContent = 
+                `🗺️ Your workflow diagram is ready: ` +
+                `**[Open full-screen ↗](${link})**\n\n` +
+                `*(zoom, edit, export in Mermaid-Live)*`;
+            }
+          }
+          
+          const followUpMessage = { text: followUpContent, isBot: true };
           const savedFollowUpMessage = await saveMessageToDatabase(followUpMessage, sessionId);
           
           const newFollowUpMessage = savedFollowUpMessage ? 
-            { id: savedFollowUpMessage.id, text: data.nextMessage, isBot: true, sessionId: savedFollowUpMessage.session_id } : 
+            { id: savedFollowUpMessage.id, text: followUpContent, isBot: true, sessionId: savedFollowUpMessage.session_id } : 
             followUpMessage;
           
           // Add a slight delay before showing the follow-up message
