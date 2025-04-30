@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AISolutionsDisplay } from '@/components/AISolutionsDisplay';
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Zap } from "lucide-react";
+import { Loader2, Zap, RefreshCw, AlertCircle } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 
 interface MermaidChartProps {
@@ -22,6 +22,7 @@ const MermaidChart: React.FC<MermaidChartProps> = ({ chart, workflowId, workflow
   const [currentTab, setCurrentTab] = useState<string>("diagram");
   const [isGenerating, setIsGenerating] = useState(false);
   const [attemptCount, setAttemptCount] = useState(0);
+  const [isRendering, setIsRendering] = useState(true);
 
   // Initialize mermaid with appropriate config
   useEffect(() => {
@@ -63,13 +64,14 @@ const MermaidChart: React.FC<MermaidChartProps> = ({ chart, workflowId, workflow
         // Reset error state
         setHasError(false);
         setErrorMessage(null);
+        setIsRendering(true);
 
         // Clear the container
         containerRef.current.innerHTML = '';
         
         console.log("Attempting to render chart:", chart.substring(0, 100) + '...');
 
-        // Render with increased timeout (20 seconds instead of 10)
+        // Render with increased timeout (30 seconds instead of 10)
         const timeoutId = setTimeout(() => {
           console.log('Rendering is taking longer than expected...');
           // Don't throw error immediately - allow more time
@@ -88,7 +90,7 @@ const MermaidChart: React.FC<MermaidChartProps> = ({ chart, workflowId, workflow
               `;
             }
           }
-        }, 20000);
+        }, 30000);
 
         // Try to render the chart
         const { svg } = await mermaid.render('mermaid-diagram', chart);
@@ -109,10 +111,17 @@ const MermaidChart: React.FC<MermaidChartProps> = ({ chart, workflowId, workflow
             <div class="p-4 border rounded bg-red-50 text-red-800">
               <p>There was an error rendering this diagram:</p>
               <p class="font-mono text-sm mt-2">${error instanceof Error ? error.message : 'Unknown error'}</p>
+              <div class="mt-4">
+                <Button variant="outline" size="sm" onClick={() => setAttemptCount(prev => prev + 1)}>
+                  <RefreshCw className="h-4 w-4 mr-2" /> Try Again
+                </Button>
+              </div>
               <pre class="mt-4 p-2 bg-white border rounded overflow-auto text-xs">${chart.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
             </div>
           `;
         }
+      } finally {
+        setIsRendering(false);
       }
     };
 
@@ -129,7 +138,7 @@ const MermaidChart: React.FC<MermaidChartProps> = ({ chart, workflowId, workflow
     try {
       setIsGenerating(true);
       
-      // Call the edge function
+      // Call the edge function with the correct parameter name
       const res = await supabase.functions.invoke('generate-ai-solutions', {
         body: { workflowId }
       });
@@ -160,6 +169,16 @@ const MermaidChart: React.FC<MermaidChartProps> = ({ chart, workflowId, workflow
     }
   };
 
+  // Render loading indicator while the chart is being processed
+  if (isRendering && !hasError) {
+    return (
+      <div className="w-full p-8 flex flex-col items-center justify-center border rounded-lg bg-card min-h-[200px]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+        <p className="text-muted-foreground">Rendering workflow diagram...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full">
       {workflowId && workflowTitle ? (
@@ -176,7 +195,8 @@ const MermaidChart: React.FC<MermaidChartProps> = ({ chart, workflowId, workflow
                   className="mermaid-container overflow-auto bg-white p-2 rounded min-h-[200px] border"
                 />
                 {hasError && errorMessage && (
-                  <div className="text-red-500 mt-2 text-sm">
+                  <div className="flex items-center text-red-500 mt-2 text-sm p-2 bg-red-50 rounded">
+                    <AlertCircle className="h-4 w-4 mr-2" />
                     {errorMessage}
                   </div>
                 )}
@@ -212,8 +232,12 @@ const MermaidChart: React.FC<MermaidChartProps> = ({ chart, workflowId, workflow
             className="mermaid-container overflow-auto bg-white p-2 rounded min-h-[200px]"
           />
           {hasError && errorMessage && (
-            <div className="text-red-500 mt-2 text-sm">
+            <div className="flex items-center text-red-500 mt-2 text-sm p-2 bg-red-50 rounded">
+              <AlertCircle className="h-4 w-4 mr-2" />
               {errorMessage}
+              <Button variant="outline" size="sm" className="ml-4" onClick={() => setAttemptCount(prev => prev + 1)}>
+                <RefreshCw className="h-4 w-4 mr-2" /> Try Again
+              </Button>
             </div>
           )}
         </div>
