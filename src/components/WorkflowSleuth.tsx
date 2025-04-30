@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import ChatMessage from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
@@ -107,31 +106,37 @@ export const WorkflowSleuth = () => {
 
   // Process messages with mermaid content for correct link generation
   const processMessages = (msgs) => {
-    return msgs.map(msg => {
+    const newMessages = [];
+    
+    for (const m of msgs) {
       // Only process bot messages that contain mermaid code blocks
-      if (msg.isBot && msg.text && msg.text.includes('```mermaid')) {
-        // Extract mermaid code with a more robust regex
-        const mermaidMatch = msg.text.match(/```mermaid([\s\S]*?)```/i);
+      if (m.isBot && m.text && m.text.includes('```mermaid')) {
+        // Extract inner mermaid code with a more robust regex
+        const mermaidMatch = m.text.match(/```mermaid[^\n]*\n([\s\S]*?)```/i);
         
-        if (mermaidMatch && mermaidMatch[0]) {
+        if (mermaidMatch && mermaidMatch[1]) {
           try {
             // Generate proper link with compression
-            const link = mermaidLiveLink(mermaidMatch[0]);
+            const link = mermaidLiveLink(mermaidMatch[1]); // Use inner captured code
             
-            // Return a new message object with the formatted text
-            return {
-              ...msg,
-              text: `🗺️ Your workflow diagram is ready: **[Open full-screen diagram ↗](${link})**\n\n*(View, edit, or export in the Mermaid editor)*`
-            };
+            // Create a new message with the formatted text
+            newMessages.push({
+              ...m,
+              text: `🗺️ Your workflow diagram is ready: **[Open full-screen ↗](${link})**\n\n*(zoom, edit, export in Mermaid-Live)*`
+            });
+            
+            continue; // Skip adding the original message
           } catch (error) {
             console.error("Error processing mermaid diagram:", error);
-            // If an error occurs, return the original message
-            return msg;
+            // If an error occurs, fall through to add the original message
           }
         }
       }
-      return msg;
-    });
+      // Add the original message for non-mermaid messages or if processing failed
+      newMessages.push(m);
+    }
+    
+    return newMessages;
   };
 
   // Ensure app doesn't crash if userInfo is not available
