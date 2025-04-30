@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.0';
 
@@ -14,7 +15,6 @@ function mermaidLiveLink(code: string): string {
     // that creates a compatible URL format with the browser implementation
     
     // The client-side will handle the actual link generation with proper compression
-    // For now, we use a direct parameter approach as fallback
     return `https://mermaid.live/edit?code=${encodeURIComponent(code)}`;
   } catch (error) {
     console.error("Error creating Mermaid live link:", error);

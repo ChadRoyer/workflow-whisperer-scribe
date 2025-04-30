@@ -211,7 +211,7 @@ serve(async (req) => {
         try {
           console.log(`Generating visualization for workflow: ${functionArgs.title}`);
           
-          // Call our edge function to generate the Mermaid diagram link
+          // Call our edge function to generate the Mermaid diagram
           const visualizationResponse = await fetch(
             `${supabaseUrl}/functions/v1/generate-workflow-mermaid`,
             {
@@ -235,12 +235,11 @@ serve(async (req) => {
             throw new Error(visualData.error);
           }
           
-          // Get both the link and the raw code
-          const liveLink = visualData.link;
+          // Get the raw code - we'll generate the link on the client side
           const mermaidCode = visualData.mermaidCode || "";
           
-          // Create a message with the link and embedded code
-          const linkMessage = `🗺️ Your workflow diagram is ready. You can view it directly below or [open it in the Mermaid Live Editor](${liveLink}) for more options.\n\n\`\`\`mermaid\n${mermaidCode}\n\`\`\``;
+          // Create a message with the embedded code
+          const linkMessage = `🗺️ Your workflow diagram is ready: **[Open full-screen ↗](placeholder-will-be-replaced-client-side)**\n\n*(zoom, edit, export in the Mermaid editor)*\n\n\`\`\`mermaid\n${mermaidCode}\n\`\`\``;
         
           // Save the link message to chat messages
           const { data: messageData, error: messageError } = await supabase
@@ -257,7 +256,7 @@ serve(async (req) => {
             throw new Error(`Failed to save diagram link: ${messageError.message}`);
           }
           
-          console.log("Saved diagram link to chat messages:", messageData);
+          console.log("Saved diagram to chat messages");
 
           // Create follow-up question
           const followUpQuestion = count >= 10 
@@ -277,11 +276,11 @@ serve(async (req) => {
             console.error("Error saving follow-up message:", followUpError);
           }
 
-          // Return both the diagram link and follow-up question
+          // Return both the diagram and follow-up question
           return new Response(
             JSON.stringify({ 
               reply: linkMessage,
-              mermaidCode: mermaidCode, // Also send the raw code
+              mermaidCode: mermaidCode,
               addedWorkflow: workflowData ? workflowData[0] : null,
               workflowCount: count,
               nextMessage: followUpQuestion
