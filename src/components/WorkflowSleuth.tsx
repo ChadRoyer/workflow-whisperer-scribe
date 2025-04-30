@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import ChatMessage from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
@@ -8,7 +9,7 @@ import { useWorkflowMessages } from "@/hooks/useWorkflowMessages";
 import { useSessionTitle } from "@/hooks/useSessionTitle";
 import { useSessionManagement } from "./chat/useSessionManagement";
 import { toast } from "@/components/ui/use-toast";
-import { AlertCircle, Loader2 } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useAuth } from "@/contexts/AuthContext";
 import { mermaidLiveLink } from "@/utils/mermaidLiveLink";
@@ -113,14 +114,20 @@ export const WorkflowSleuth = () => {
         const mermaidMatch = msg.text.match(/```mermaid([\s\S]*?)```/i);
         
         if (mermaidMatch && mermaidMatch[0]) {
-          // Generate proper link with compression
-          const link = mermaidLiveLink(mermaidMatch[0]);
-          
-          // Completely replace the message text with the cleaner format
-          return {
-            ...msg,
-            text: `🗺️ Your workflow diagram is ready: **[Open full-screen diagram ↗](${link})**\n\n*(View, edit, or export in the Mermaid editor)*`
-          };
+          try {
+            // Generate proper link with compression
+            const link = mermaidLiveLink(mermaidMatch[0]);
+            
+            // Return a new message object with the formatted text
+            return {
+              ...msg,
+              text: `🗺️ Your workflow diagram is ready: **[Open full-screen diagram ↗](${link})**\n\n*(View, edit, or export in the Mermaid editor)*`
+            };
+          } catch (error) {
+            console.error("Error processing mermaid diagram:", error);
+            // If an error occurs, return the original message
+            return msg;
+          }
         }
       }
       return msg;
@@ -147,8 +154,15 @@ export const WorkflowSleuth = () => {
     }
   }, []);
 
-  // Process messages to ensure correct mermaid links
-  const processedMessages = processMessages(messages);
+  // Safely process messages with error handling
+  let processedMessages = [];
+  try {
+    processedMessages = processMessages(messages);
+  } catch (error) {
+    console.error("Error processing messages:", error);
+    processedMessages = messages; // Use original messages if processing fails
+    setRenderError("Error processing messages. Some features may be unavailable.");
+  }
 
   return (
     <div className="flex h-[80vh] w-full mx-auto overflow-hidden">
