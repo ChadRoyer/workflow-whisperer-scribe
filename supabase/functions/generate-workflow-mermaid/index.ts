@@ -9,10 +9,10 @@ const corsHeaders = {
 
 // Helper function to create a Mermaid Live Editor link
 function mermaidLiveLink(code: string): string {
-  // Simple base64 encoding approach
+  // Base64 encode the raw diagram code first
   const base64Encoded = btoa(unescape(encodeURIComponent(code)));
   
-  // Return a direct link to Mermaid Live Editor with the properly encoded diagram
+  // Return the properly formatted Mermaid Live Editor URL
   return `https://mermaid.live/edit#pako:${encodeURIComponent(base64Encoded)}`;
 }
 

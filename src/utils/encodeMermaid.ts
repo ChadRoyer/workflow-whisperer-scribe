@@ -6,9 +6,9 @@
  * @returns A URL that opens the diagram in Mermaid Live Editor
  */
 export function mermaidLiveLink(code: string): string {
-  // Simple base64 encoding approach for consistency with the edge function
+  // Base64 encode the raw diagram code first
   const base64Encoded = btoa(unescape(encodeURIComponent(code)));
   
-  // Return a direct link to Mermaid Live Editor with the properly encoded diagram
+  // Return the properly formatted Mermaid Live Editor URL
   return `https://mermaid.live/edit#pako:${encodeURIComponent(base64Encoded)}`;
 }
