@@ -16,7 +16,7 @@ export function mermaidLiveLink(code: string): string {
     // Debug output to verify what we're compressing
     console.log("Compressing Mermaid code:", cleanCode);
     
-    // Compress the code using pako deflate (default level 6)
+    // Compress the code using pako deflate
     const encodedValue = new TextEncoder().encode(cleanCode);
     const compressedData = pako.deflate(encodedValue);
     
