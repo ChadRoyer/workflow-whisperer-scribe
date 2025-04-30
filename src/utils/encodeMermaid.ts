@@ -1,6 +1,4 @@
 
-import { compress } from "lz-string";
-
 /**
  * Generates a Mermaid Live Editor link with the provided diagram code
  * 
@@ -8,11 +6,9 @@ import { compress } from "lz-string";
  * @returns A URL that opens the diagram in Mermaid Live Editor
  */
 export function mermaidLiveLink(code: string): string {
-  // Use compress function to encode the mermaid code
-  const encoded = compress(code);
+  // Simple base64 encoding approach for consistency with the edge function
+  const base64Encoded = btoa(unescape(encodeURIComponent(code)));
   
-  // Convert to base64 and URI encode for the URL
-  const base64Encoded = btoa(encoded);
-  
+  // Return a direct link to Mermaid Live Editor with the properly encoded diagram
   return `https://mermaid.live/edit#pako:${encodeURIComponent(base64Encoded)}`;
 }
