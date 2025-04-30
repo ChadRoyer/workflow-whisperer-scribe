@@ -114,20 +114,20 @@ export const useWorkflowMessages = ({
         if (data.reply && typeof data.reply === 'string') {
           let replyContent = data.reply;
           
-          // Process mermaid content before it hits the DOM
+          // ----- interception: swap Mermaid block for link -----
           if (replyContent.includes("```mermaid")) {
-            const mermaidMatch = replyContent.match(/```mermaid[^\n]*\n([\s\S]*?)```/i);
+            const inner = replyContent.match(/```mermaid[^\n]*\n([\s\S]*?)```/i)?.[1];
             
-            if (mermaidMatch) {
-              const inner = mermaidMatch[1];
+            if (inner) {
               const link = mermaidLiveLink(inner);
               
               replyContent = 
-                `🗺️ Your workflow diagram is ready: ` +
+                "🗺️  Your workflow diagram is ready: " +
                 `**[Open full-screen ↗](${link})**\n\n` +
-                `*(zoom, edit, export in Mermaid-Live)*`;
+                "*(zoom, edit, export in Mermaid-Live)*";
             }
           }
+          // ----- end interception -----
           
           const botMessage = { text: replyContent, isBot: true };
           const savedBotMessage = await saveMessageToDatabase(botMessage, sessionId);
@@ -146,19 +146,21 @@ export const useWorkflowMessages = ({
           // Also transform the follow-up message if it contains mermaid
           let followUpContent = data.nextMessage;
           
+          // ----- interception: swap Mermaid block for link for follow-up messages -----
           if (followUpContent.includes("```mermaid")) {
             const mermaidMatch = followUpContent.match(/```mermaid[^\n]*\n([\s\S]*?)```/i);
             
-            if (mermaidMatch) {
+            if (mermaidMatch && mermaidMatch[1]) {
               const inner = mermaidMatch[1];
               const link = mermaidLiveLink(inner);
               
               followUpContent = 
-                `🗺️ Your workflow diagram is ready: ` +
+                "🗺️  Your workflow diagram is ready: " +
                 `**[Open full-screen ↗](${link})**\n\n` +
-                `*(zoom, edit, export in Mermaid-Live)*`;
+                "*(zoom, edit, export in Mermaid-Live)*";
             }
           }
+          // ----- end interception -----
           
           const followUpMessage = { text: followUpContent, isBot: true };
           const savedFollowUpMessage = await saveMessageToDatabase(followUpMessage, sessionId);
