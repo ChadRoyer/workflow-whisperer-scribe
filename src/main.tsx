@@ -1,8 +1,9 @@
-
 import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
 import mermaid from 'mermaid'
+import { Buffer } from "buffer";
+(window as any).Buffer = Buffer;
 
 // Create a type definition for the window object
 declare global {
