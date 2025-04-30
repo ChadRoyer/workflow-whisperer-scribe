@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.0';
 
@@ -12,8 +11,9 @@ function mermaidLiveLink(code: string): string {
   // This is a simple implementation for Deno - we can't import from src/utils
   // so we reimplement the encoding logic here
   
-  // URL-encode the diagram code
-  const encodedDiagram = encodeURIComponent(code);
+  // Use a URL-safe encoding approach for the diagram code
+  const base64Encoded = btoa(code);
+  const encodedDiagram = encodeURIComponent(base64Encoded);
   
   // Return a direct link to Mermaid Live Editor with the encoded diagram
   return `https://mermaid.live/edit#pako:${encodedDiagram}`;
@@ -90,15 +90,12 @@ serve(async (req) => {
     console.log("Generated Mermaid chart:", mermaidChart);
 
     // Create a Mermaid Live Editor link
-    const liveLink = mermaidLiveLink(mermaidChart);
-    console.log("Generated Mermaid Live link:", liveLink);
+    const link = mermaidLiveLink(mermaidChart);
+    console.log("Generated Mermaid Live link:", link);
 
-    // Return both the diagram code and the live link
+    // Return just the link
     return new Response(
-      JSON.stringify({ 
-        mermaidChart,
-        link: liveLink 
-      }),
+      JSON.stringify({ link }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 

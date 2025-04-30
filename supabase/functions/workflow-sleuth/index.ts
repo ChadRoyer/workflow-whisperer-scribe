@@ -1,4 +1,3 @@
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
@@ -76,7 +75,7 @@ serve(async (req) => {
       console.log(`Found recent workflow: ${workflowTitle}. Generating visualization...`);
       
       try {
-        // Call the edge function to generate Mermaid diagram
+        // Call the edge function to generate Mermaid diagram link
         const visualizationResponse = await fetch(
           `${supabaseUrl}/functions/v1/generate-workflow-mermaid`,
           {
@@ -101,11 +100,10 @@ serve(async (req) => {
           throw new Error(visualData.error);
         }
 
-        // Get the Mermaid Live link and chart data
-        const mermaidChart = visualData.mermaidChart;
+        // Get the Mermaid Live link
         const liveLink = visualData.link;
         
-        // Create a message with the link rather than embedding the chart
+        // Create a message with the link
         const linkMessage = `🗺️ Your workflow diagram is ready: **[Open in Mermaid Live](${liveLink})**\n\n*(zoom, edit, export from there)*`;
         
         // Save the link message to chat messages
@@ -212,7 +210,7 @@ serve(async (req) => {
         try {
           console.log(`Generating visualization for workflow: ${functionArgs.title}`);
           
-          // Call our edge function to generate the Mermaid diagram
+          // Call our edge function to generate the Mermaid diagram link
           const visualizationResponse = await fetch(
             `${supabaseUrl}/functions/v1/generate-workflow-mermaid`,
             {
@@ -236,25 +234,25 @@ serve(async (req) => {
             throw new Error(visualData.error);
           }
           
-          // Log the generated diagram for debugging
-          console.log("Successfully generated Mermaid diagram:", visualData.mermaidChart);
-
-          // Save the Mermaid diagram directly to the chat
+          // Create a message with the link
+          const linkMessage = `🗺️ Your workflow diagram is ready: **[Open in Mermaid Live](${visualData.link})**\n\n*(zoom, edit, export from there)*`;
+        
+          // Save the link message to chat messages
           const { data: messageData, error: messageError } = await supabase
             .from('chat_messages')
             .insert({
               session_id: sessionId,
               role: 'assistant',
-              content: visualData.mermaidChart
+              content: linkMessage
             })
             .select();
-
+          
           if (messageError) {
             console.error("Error saving diagram message:", messageError);
-            throw new Error(`Failed to save diagram: ${messageError.message}`);
+            throw new Error(`Failed to save diagram link: ${messageError.message}`);
           }
           
-          console.log("Saved diagram to chat messages:", messageData);
+          console.log("Saved diagram link to chat messages:", messageData);
 
           // Create follow-up question
           const followUpQuestion = count >= 10 
@@ -274,10 +272,10 @@ serve(async (req) => {
             console.error("Error saving follow-up message:", followUpError);
           }
 
-          // Return both the diagram and follow-up question
+          // Return both the diagram link and follow-up question
           return new Response(
             JSON.stringify({ 
-              reply: visualData.mermaidChart,
+              reply: linkMessage,
               addedWorkflow: workflowData ? workflowData[0] : null,
               workflowCount: count,
               nextMessage: followUpQuestion

@@ -118,7 +118,7 @@ export const useWorkflowMessages = ({
             { id: savedBotMessage.id, text: data.reply, isBot: true, sessionId: savedBotMessage.session_id } : 
             botMessage;
           
-          setMessages([...updatedMessages, newBotMessage]);
+          setMessages(prevMessages => [...prevMessages, newBotMessage]);
         }
         
         // Handle additional follow-up message if provided
@@ -161,7 +161,7 @@ export const useWorkflowMessages = ({
           isBot: true 
         };
         
-        setMessages([...updatedMessages, errorMessage]);
+        setMessages(prevMessages => [...prevMessages, errorMessage]);
       } finally {
         setIsLoading(false);
       }
