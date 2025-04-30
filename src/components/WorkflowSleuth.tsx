@@ -12,6 +12,7 @@ import { toast } from "@/components/ui/use-toast";
 import { AlertCircle, Loader2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useAuth } from "@/contexts/AuthContext";
+import { mermaidLiveLink } from "@/utils/mermaidLiveLink";
 
 export const WorkflowSleuth = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -104,6 +105,31 @@ export const WorkflowSleuth = () => {
     scrollToBottom();
   }, [messages]);
 
+  // Process messages with mermaid content for correct link generation
+  const processMessages = (msgs) => {
+    return msgs.map(msg => {
+      if (msg.text && msg.text.includes('```mermaid')) {
+        // Extract mermaid code
+        const mermaidMatch = msg.text.match(/```mermaid\n([\s\S]*?)```/);
+        if (mermaidMatch && mermaidMatch[1]) {
+          const mermaidCode = mermaidMatch[1];
+          
+          // Generate proper link
+          const properLink = mermaidLiveLink(mermaidCode);
+          
+          // Replace old link if present
+          const updatedText = msg.text.replace(
+            /\*\*\[Open full-screen ↗\]\((.*?)\)\*\*/,
+            `**[Open full-screen ↗](${properLink})**`
+          );
+          
+          return { ...msg, text: updatedText };
+        }
+      }
+      return msg;
+    });
+  };
+
   // Ensure app doesn't crash if userInfo is not available
   if (!userInfo) {
     return (
@@ -123,6 +149,9 @@ export const WorkflowSleuth = () => {
       setRenderError(`Initialization error: ${(error as Error).message}`);
     }
   }, []);
+
+  // Process messages to ensure correct mermaid links
+  const processedMessages = processMessages(messages);
 
   return (
     <div className="flex h-[80vh] w-full mx-auto overflow-hidden">
@@ -146,18 +175,18 @@ export const WorkflowSleuth = () => {
               </AlertDescription>
             </Alert>
           )}
-          {messages.length === 0 && !isLoading && !initializationError && !renderError ? (
+          {processedMessages.length === 0 && !isLoading && !initializationError && !renderError ? (
             <div className="flex h-full items-center justify-center">
               <p className="text-muted-foreground">
                 {isInitialized ? "No messages yet" : "Initializing chat for " + (userInfo?.companyName || 'your company') + "..."}
               </p>
             </div>
           ) : (
-            messages.map((message, index) => (
+            processedMessages.map((message, index) => (
               <ChatMessage
                 key={message.id || index}
                 message={message}
-                isLastMessage={index === messages.length - 1}
+                isLastMessage={index === processedMessages.length - 1}
               />
             ))
           )}

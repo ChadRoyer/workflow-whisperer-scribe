@@ -1,3 +1,4 @@
+
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
@@ -101,11 +102,10 @@ serve(async (req) => {
         }
 
         // Get both the link and the raw code
-        const liveLink = visualData.link;
         const mermaidCode = visualData.mermaidCode || "";
         
         // Create a message with the link and embedded code
-        const linkMessage = `🗺️ Your workflow diagram is ready. You can view it directly below or [open it in the Mermaid Live Editor](${liveLink}) for more options.\n\n\`\`\`mermaid\n${mermaidCode}\n\`\`\``;
+        const linkMessage = `🗺️ Your workflow diagram is ready: **[Open full-screen ↗](${visualData.link})**\n\n*(zoom, edit, export in the Mermaid editor)*\n\n\`\`\`mermaid\n${mermaidCode}\n\`\`\``;
         
         // Save the link message to chat messages
         const { data: messageData, error: messageError } = await supabase
@@ -138,7 +138,7 @@ serve(async (req) => {
         return new Response(
           JSON.stringify({ 
             reply: linkMessage, 
-            mermaidCode: mermaidCode, // Also send the raw code
+            mermaidCode: mermaidCode,
             nextMessage: followUpQuestion
           }), 
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
