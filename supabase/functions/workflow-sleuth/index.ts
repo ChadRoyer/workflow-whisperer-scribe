@@ -1,4 +1,3 @@
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
@@ -76,7 +75,7 @@ serve(async (req) => {
       console.log(`Found recent workflow: ${workflowTitle}. Generating visualization...`);
       
       try {
-        // Call the edge function to generate Mermaid diagram link
+        // Call the edge function to generate Mermaid diagram
         const visualizationResponse = await fetch(
           `${supabaseUrl}/functions/v1/generate-workflow-mermaid`,
           {
@@ -101,11 +100,11 @@ serve(async (req) => {
           throw new Error(visualData.error);
         }
 
-        // Get both the link and the raw code
+        // Get the raw code - we'll generate the link on the client side
         const mermaidCode = visualData.mermaidCode || "";
         
-        // Create a message with the link and embedded code
-        const linkMessage = `🗺️ Your workflow diagram is ready: **[Open full-screen ↗](${visualData.link})**\n\n*(zoom, edit, export in the Mermaid editor)*\n\n\`\`\`mermaid\n${mermaidCode}\n\`\`\``;
+        // Create a message with the embedded code
+        const linkMessage = `🗺️ Your workflow diagram is ready: **[Open full-screen ↗](placeholder-will-be-replaced-client-side)**\n\n*(zoom, edit, export in the Mermaid editor)*\n\n\`\`\`mermaid\n${mermaidCode}\n\`\`\``;
         
         // Save the link message to chat messages
         const { data: messageData, error: messageError } = await supabase
@@ -122,7 +121,7 @@ serve(async (req) => {
           throw new Error(`Failed to save diagram link: ${messageError.message}`);
         }
         
-        console.log("Successfully generated and saved Mermaid diagram link!");
+        console.log("Successfully generated and saved Mermaid diagram!");
         
         // Create a follow-up message
         const followUpQuestion = "Shall we document another workflow, or are you DONE for now?";

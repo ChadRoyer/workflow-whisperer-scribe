@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.0';
 
@@ -93,15 +92,9 @@ serve(async (req) => {
     
     console.log("Generated Mermaid chart:", mermaidChart);
 
-    // Create a Mermaid Live Editor link - the actual compression will be handled client-side
-    // This is just a placeholder that will be replaced with the properly compressed link
-    const link = mermaidLiveLink(mermaidChart);
-    console.log("Generated Mermaid Live link:", link);
-
-    // Return both the raw chart data and the link
+    // Return just the raw chart data - client will handle link generation
     return new Response(
       JSON.stringify({ 
-        link,
         mermaidCode: mermaidChart 
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
