@@ -104,7 +104,7 @@ serve(async (req) => {
         const liveLink = visualData.link;
         
         // Create a message with the link
-        const linkMessage = `🗺️ Your workflow diagram is ready: **[Open in Mermaid Live](${liveLink})**\n\n*(zoom, edit, export from there)*`;
+        const linkMessage = `🗺️ Your workflow diagram is ready: **[Open Workflow Diagram](${liveLink})**\n\n*(Click the link to view, edit, or export the diagram)*`;
         
         // Save the link message to chat messages
         const { data: messageData, error: messageError } = await supabase
@@ -235,7 +235,7 @@ serve(async (req) => {
           }
           
           // Create a message with the link
-          const linkMessage = `🗺️ Your workflow diagram is ready: **[Open in Mermaid Live](${visualData.link})**\n\n*(zoom, edit, export from there)*`;
+          const linkMessage = `🗺️ Your workflow diagram is ready: **[Open Workflow Diagram](${visualData.link})**\n\n*(Click the link to view, edit, or export the diagram)*`;
         
           // Save the link message to chat messages
           const { data: messageData, error: messageError } = await supabase

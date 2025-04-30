@@ -1,5 +1,7 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.0';
+import { compress } from 'https://esm.sh/lz-string@1.5.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -8,15 +10,22 @@ const corsHeaders = {
 
 // Helper function to create a Mermaid Live Editor link
 function mermaidLiveLink(code: string): string {
-  // This is a simple implementation for Deno - we can't import from src/utils
-  // so we reimplement the encoding logic here
+  // Use compress function from lz-string to properly encode the diagram
+  const encoded = compress(code);
   
-  // Use a URL-safe encoding approach for the diagram code
-  const base64Encoded = btoa(code);
-  const encodedDiagram = encodeURIComponent(base64Encoded);
+  // Convert to base64 for URL embedding
+  // Need to use TextEncoder and TextDecoder for proper UTF-8 handling in Deno
+  const encoder = new TextEncoder();
+  const decoder = new TextDecoder();
+  const uint8Array = encoder.encode(encoded);
+  
+  // Convert Uint8Array to a base64 string that's URL safe
+  const base64Encoded = btoa(Array.from(uint8Array)
+    .map(b => String.fromCharCode(b))
+    .join(''));
   
   // Return a direct link to Mermaid Live Editor with the encoded diagram
-  return `https://mermaid.live/edit#pako:${encodedDiagram}`;
+  return `https://mermaid.live/edit#pako:${encodeURIComponent(base64Encoded)}`;
 }
 
 serve(async (req) => {
