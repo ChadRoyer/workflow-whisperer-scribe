@@ -110,21 +110,16 @@ export const WorkflowSleuth = () => {
       // Only process bot messages that contain mermaid code blocks
       if (msg.isBot && msg.text && msg.text.includes('```mermaid')) {
         // Extract mermaid code with a more robust regex
-        const mermaidMatch = msg.text.match(/```mermaid[\s\S]*?flowchart\sTD([\s\S]*?)```/i);
+        const mermaidMatch = msg.text.match(/```mermaid([\s\S]*?)```/i);
         
-        if (mermaidMatch && mermaidMatch[1]) {
-          // Get the full mermaid code by including the "flowchart TD" part
-          const mermaidCode = "flowchart TD" + mermaidMatch[1].trim();
-          console.log("Extracted Mermaid code:", mermaidCode);
-          
+        if (mermaidMatch && mermaidMatch[0]) {
           // Generate proper link with compression
-          const properLink = mermaidLiveLink(mermaidCode);
-          console.log("Generated Link:", properLink);
+          const link = mermaidLiveLink(mermaidMatch[0]);
           
           // Completely replace the message text with the cleaner format
           return {
             ...msg,
-            text: `🗺️ Your workflow diagram is ready: **[Open full-screen diagram ↗](${properLink})**\n\n*(View, edit, or export in the Mermaid editor)*\n\n\`\`\`mermaid\n${mermaidCode}\n\`\`\``
+            text: `🗺️ Your workflow diagram is ready: **[Open full-screen diagram ↗](${link})**\n\n*(View, edit, or export in the Mermaid editor)*`
           };
         }
       }
