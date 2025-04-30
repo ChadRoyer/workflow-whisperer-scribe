@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import ChatMessage from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
@@ -115,7 +116,8 @@ export const WorkflowSleuth = () => {
         const mermaidMatch = m.text.match(/```mermaid[^\n]*\n([\s\S]*?)```/i);
         
         if (mermaidMatch) {
-          const link = mermaidLiveLink(mermaidMatch[1]); // <-- use inner capture
+          const code = mermaidMatch[1];      // NOT [0] - explicitly name for clarity
+          const link = mermaidLiveLink(code);
           
           newMessages.push({
             ...m,
