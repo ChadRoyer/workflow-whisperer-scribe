@@ -121,10 +121,11 @@ export const WorkflowSleuth = () => {
           const properLink = mermaidLiveLink(mermaidCode);
           console.log("Generated Link:", properLink);
           
-          // Create new message text with the proper link
-          const updatedText = `🗺️ Your workflow diagram is ready: **[Open full-screen diagram ↗](${properLink})**\n\n*(View, edit, or export in the Mermaid editor)*\n\n\`\`\`mermaid\n${mermaidCode}\n\`\`\``;
-          
-          return { ...msg, text: updatedText };
+          // Completely replace the message text with the cleaner format
+          return {
+            ...msg,
+            text: `🗺️ Your workflow diagram is ready: **[Open full-screen diagram ↗](${properLink})**\n\n*(View, edit, or export in the Mermaid editor)*\n\n\`\`\`mermaid\n${mermaidCode}\n\`\`\``
+          };
         }
       }
       return msg;
