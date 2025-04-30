@@ -4,6 +4,12 @@ import pako from "pako";
 /**
  * Convert a Mermaid code string into a shareable
  * Mermaid-Live Editor link with proper compression.
+ * 
+ * Steps:
+ *  - deflate (raw) with pako
+ *  - base64 with btoa
+ *  - URL-safe: replace "+", "/" with "-", "_"
+ *  - Remove "=" padding at the end
  */
 export function mermaidLiveLink(code: string): string {
   try {
@@ -16,9 +22,9 @@ export function mermaidLiveLink(code: string): string {
     // Debug output to verify what we're compressing
     console.log("Compressing Mermaid code:", cleanCode);
     
-    // Compress the code using pako deflate
+    // Compress the code using pako deflate with maximum compression
     const encodedValue = new TextEncoder().encode(cleanCode);
-    const compressedData = pako.deflate(encodedValue);
+    const compressedData = pako.deflate(encodedValue, { level: 9 });
     
     // Convert the compressed data to a base64 string
     const base64String = btoa(
@@ -27,10 +33,11 @@ export function mermaidLiveLink(code: string): string {
         .join('')
     );
     
-    // Replace characters for URL safety
+    // Replace characters for URL safety and remove padding
     const urlSafeBase64 = base64String
       .replace(/\+/g, "-")
-      .replace(/\//g, "_");
+      .replace(/\//g, "_")
+      .replace(/=+$/, "");
     
     // Construct the final URL with the pako: prefix
     const finalUrl = `https://mermaid.live/edit#pako:${urlSafeBase64}`;
