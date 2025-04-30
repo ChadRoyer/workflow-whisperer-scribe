@@ -10,16 +10,12 @@ const corsHeaders = {
 // Helper function to create a Mermaid Live Editor link with robust error handling
 function mermaidLiveLink(code: string): string {
   try {
-    // Base64 encode the raw diagram code first
-    const base64Encoded = btoa(unescape(encodeURIComponent(code)));
-    
-    // Return the properly formatted Mermaid Live Editor URL
-    return `https://mermaid.live/edit#pako:${encodeURIComponent(base64Encoded)}`;
+    // Use direct code parameter approach for more reliability
+    return `https://mermaid.live/edit?code=${encodeURIComponent(code)}`;
   } catch (error) {
     console.error("Error encoding Mermaid diagram:", error);
     // Provide a fallback with minimal encoding in case of errors
-    const simpleEncoded = btoa(code.replace(/[\n\r\t]/g, ' ').substring(0, 1000));
-    return `https://mermaid.live/edit#base64:${simpleEncoded}`;
+    return `https://mermaid.live/edit?code=${encodeURIComponent(code.substring(0, 2000))}`;
   }
 }
 
@@ -97,9 +93,12 @@ serve(async (req) => {
     const link = mermaidLiveLink(mermaidChart);
     console.log("Generated Mermaid Live link:", link);
 
-    // Return just the link
+    // Return both the raw chart data and the link
     return new Response(
-      JSON.stringify({ link }),
+      JSON.stringify({ 
+        link,
+        mermaidCode: mermaidChart 
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 

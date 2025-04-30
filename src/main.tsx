@@ -4,6 +4,13 @@ import App from './App.tsx'
 import './index.css'
 import mermaid from 'mermaid'
 
+// Create a type definition for the window object
+declare global {
+  interface Window {
+    mermaidInitialized?: boolean;
+  }
+}
+
 // Global error handler to catch unhandled errors
 window.addEventListener('error', (event) => {
   console.error('Global error caught:', event.error);

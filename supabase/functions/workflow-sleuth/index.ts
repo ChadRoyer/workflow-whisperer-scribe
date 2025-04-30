@@ -100,11 +100,12 @@ serve(async (req) => {
           throw new Error(visualData.error);
         }
 
-        // Get the Mermaid Live link
+        // Get both the link and the raw code
         const liveLink = visualData.link;
+        const mermaidCode = visualData.mermaidCode || "";
         
-        // Create a message with the link
-        const linkMessage = `🗺️ Your workflow diagram is ready: **[Open Workflow Diagram](${liveLink})**\n\n*(Click the link to view, edit, or export the diagram)*`;
+        // Create a message with the link and embedded code
+        const linkMessage = `🗺️ Your workflow diagram is ready. You can view it directly below or [open it in the Mermaid Live Editor](${liveLink}) for more options.\n\n\`\`\`mermaid\n${mermaidCode}\n\`\`\``;
         
         // Save the link message to chat messages
         const { data: messageData, error: messageError } = await supabase
@@ -137,6 +138,7 @@ serve(async (req) => {
         return new Response(
           JSON.stringify({ 
             reply: linkMessage, 
+            mermaidCode: mermaidCode, // Also send the raw code
             nextMessage: followUpQuestion
           }), 
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -234,8 +236,12 @@ serve(async (req) => {
             throw new Error(visualData.error);
           }
           
-          // Create a message with the link
-          const linkMessage = `🗺️ Your workflow diagram is ready: **[Open Workflow Diagram](${visualData.link})**\n\n*(Click the link to view, edit, or export the diagram)*`;
+          // Get both the link and the raw code
+          const liveLink = visualData.link;
+          const mermaidCode = visualData.mermaidCode || "";
+          
+          // Create a message with the link and embedded code
+          const linkMessage = `🗺️ Your workflow diagram is ready. You can view it directly below or [open it in the Mermaid Live Editor](${liveLink}) for more options.\n\n\`\`\`mermaid\n${mermaidCode}\n\`\`\``;
         
           // Save the link message to chat messages
           const { data: messageData, error: messageError } = await supabase
@@ -276,6 +282,7 @@ serve(async (req) => {
           return new Response(
             JSON.stringify({ 
               reply: linkMessage,
+              mermaidCode: mermaidCode, // Also send the raw code
               addedWorkflow: workflowData ? workflowData[0] : null,
               workflowCount: count,
               nextMessage: followUpQuestion
