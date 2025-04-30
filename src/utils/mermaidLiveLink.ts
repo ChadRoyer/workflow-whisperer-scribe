@@ -10,6 +10,7 @@ import pako from "pako";
  *  - base64 with btoa
  *  - URL-safe: replace "+", "/" with "-", "_"
  *  - Remove "=" padding at the end
+ *  - URI-encode the final string
  */
 export function mermaidLiveLink(code: string): string {
   try {
@@ -39,8 +40,8 @@ export function mermaidLiveLink(code: string): string {
       .replace(/\//g, "_")
       .replace(/=+$/, "");
     
-    // Construct the final URL with the pako: prefix
-    const finalUrl = `https://mermaid.live/edit#pako:${urlSafeBase64}`;
+    // Construct the final URL with the pako: prefix and properly URI-encode the payload
+    const finalUrl = `https://mermaid.live/edit#pako:${encodeURIComponent(urlSafeBase64)}`;
     
     console.log("Generated Mermaid Live URL:", finalUrl);
     
