@@ -12,8 +12,8 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isLastMessage }) => 
   // Check if message contains a Mermaid Live link
   const mermaidLiveLink = useMemo(() => {
     // Match Mermaid Live links in markdown format
-    const linkMatch = message.text.match(/\*\*\[Open in Mermaid Live\]\((https:\/\/mermaid\.live\/edit#.+?)\)\*\*/);
-    return linkMatch ? linkMatch[1] : null;
+    const linkMatch = message.text.match(/\*\*\[(.+?)\]\((https:\/\/mermaid\.live\/edit#.+?)\)\*\*/);
+    return linkMatch ? { text: linkMatch[1], url: linkMatch[2] } : null;
   }, [message.text]);
 
   // Process message text to convert markdown links to HTML
@@ -51,14 +51,14 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isLastMessage }) => 
         {mermaidLiveLink ? (
           <div className="space-y-2">
             <div className="flex items-center space-x-2 mb-2">
-              <div className="animate-pulse p-2 rounded bg-primary/10">
+              <div className="p-2 rounded bg-primary/10">
                 <svg className="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
               <div>
                 <a 
-                  href={mermaidLiveLink} 
+                  href={mermaidLiveLink.url} 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="text-primary hover:underline font-medium flex items-center"
