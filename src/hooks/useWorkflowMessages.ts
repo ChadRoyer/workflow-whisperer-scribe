@@ -109,7 +109,7 @@ export const useWorkflowMessages = ({
           throw new Error('Invalid response from server');
         }
         
-        // Handle diagram responses
+        // Handle both diagram responses and regular text responses
         if (data.reply && typeof data.reply === 'string') {
           const botMessage = { text: data.reply, isBot: true };
           const savedBotMessage = await saveMessageToDatabase(botMessage, sessionId);
@@ -117,13 +117,6 @@ export const useWorkflowMessages = ({
           const newBotMessage = savedBotMessage ? 
             { id: savedBotMessage.id, text: data.reply, isBot: true, sessionId: savedBotMessage.session_id } : 
             botMessage;
-          
-          // Determine if this is a Mermaid diagram
-          const isMermaidDiagram = /^\s*(flowchart|graph|sequenceDiagram|classDiagram|stateDiagram|gantt|pie|erDiagram|gitGraph|journey|mindmap)/i.test(data.reply.trim());
-          
-          if (isMermaidDiagram) {
-            console.log("Detected Mermaid diagram in response:", data.reply.substring(0, 50) + "...");
-          }
           
           setMessages([...updatedMessages, newBotMessage]);
         }

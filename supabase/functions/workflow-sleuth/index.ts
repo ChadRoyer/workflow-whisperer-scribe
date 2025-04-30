@@ -100,23 +100,30 @@ serve(async (req) => {
           console.error("Visualization error:", visualData.error);
           throw new Error(visualData.error);
         }
+
+        // Get the Mermaid Live link and chart data
+        const mermaidChart = visualData.mermaidChart;
+        const liveLink = visualData.link;
         
-        // Save the Mermaid diagram to chat messages
+        // Create a message with the link rather than embedding the chart
+        const linkMessage = `🗺️ Your workflow diagram is ready: **[Open in Mermaid Live](${liveLink})**\n\n*(zoom, edit, export from there)*`;
+        
+        // Save the link message to chat messages
         const { data: messageData, error: messageError } = await supabase
           .from('chat_messages')
           .insert({
             session_id: sessionId,
             role: 'assistant',
-            content: visualData.mermaidChart
+            content: linkMessage
           })
           .select();
           
         if (messageError) {
           console.error("Error saving diagram message:", messageError);
-          throw new Error(`Failed to save diagram: ${messageError.message}`);
+          throw new Error(`Failed to save diagram link: ${messageError.message}`);
         }
         
-        console.log("Successfully generated and saved Mermaid diagram!");
+        console.log("Successfully generated and saved Mermaid diagram link!");
         
         // Create a follow-up message
         const followUpQuestion = "Shall we document another workflow, or are you DONE for now?";
@@ -131,7 +138,7 @@ serve(async (req) => {
           
         return new Response(
           JSON.stringify({ 
-            reply: visualData.mermaidChart, 
+            reply: linkMessage, 
             nextMessage: followUpQuestion
           }), 
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

@@ -7,6 +7,18 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Helper function to create a Mermaid Live Editor link
+function mermaidLiveLink(code: string): string {
+  // This is a simple implementation for Deno - we can't import from src/utils
+  // so we reimplement the encoding logic here
+  
+  // URL-encode the diagram code
+  const encodedDiagram = encodeURIComponent(code);
+  
+  // Return a direct link to Mermaid Live Editor with the encoded diagram
+  return `https://mermaid.live/edit#pako:${encodedDiagram}`;
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -77,8 +89,16 @@ serve(async (req) => {
     
     console.log("Generated Mermaid chart:", mermaidChart);
 
+    // Create a Mermaid Live Editor link
+    const liveLink = mermaidLiveLink(mermaidChart);
+    console.log("Generated Mermaid Live link:", liveLink);
+
+    // Return both the diagram code and the live link
     return new Response(
-      JSON.stringify({ mermaidChart }),
+      JSON.stringify({ 
+        mermaidChart,
+        link: liveLink 
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
