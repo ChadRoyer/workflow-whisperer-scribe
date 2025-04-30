@@ -7,19 +7,11 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Generate a Mermaid Live Editor link using pako compression
+// Function signature kept for compatibility - actual link generation happens client-side
 function mermaidLiveLink(code: string): string {
-  try {
-    // This is a Deno implementation of the browser-side function
-    // As we can't directly import pako in Deno, we'll use a simplified approach
-    // that creates a compatible URL format with the browser implementation
-    
-    // The client-side will handle the actual link generation with proper compression
-    return `https://mermaid.live/edit?code=${encodeURIComponent(code)}`;
-  } catch (error) {
-    console.error("Error creating Mermaid live link:", error);
-    return `https://mermaid.live/edit?code=${encodeURIComponent(code.substring(0, 2000))}`;
-  }
+  // This function no longer generates the actual link, just returns a placeholder
+  // The client-side will handle the actual link generation with proper compression
+  return `https://mermaid.live/edit?code=${encodeURIComponent(code)}`;
 }
 
 serve(async (req) => {
