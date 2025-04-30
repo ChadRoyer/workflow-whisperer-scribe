@@ -7,13 +7,20 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Helper function to create a Mermaid Live Editor link
+// Helper function to create a Mermaid Live Editor link with robust error handling
 function mermaidLiveLink(code: string): string {
-  // Base64 encode the raw diagram code first
-  const base64Encoded = btoa(unescape(encodeURIComponent(code)));
-  
-  // Return the properly formatted Mermaid Live Editor URL
-  return `https://mermaid.live/edit#pako:${encodeURIComponent(base64Encoded)}`;
+  try {
+    // Base64 encode the raw diagram code first
+    const base64Encoded = btoa(unescape(encodeURIComponent(code)));
+    
+    // Return the properly formatted Mermaid Live Editor URL
+    return `https://mermaid.live/edit#pako:${encodeURIComponent(base64Encoded)}`;
+  } catch (error) {
+    console.error("Error encoding Mermaid diagram:", error);
+    // Provide a fallback with minimal encoding in case of errors
+    const simpleEncoded = btoa(code.replace(/[\n\r\t]/g, ' ').substring(0, 1000));
+    return `https://mermaid.live/edit#base64:${simpleEncoded}`;
+  }
 }
 
 serve(async (req) => {
