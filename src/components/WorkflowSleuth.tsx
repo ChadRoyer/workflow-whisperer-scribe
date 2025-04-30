@@ -112,16 +112,21 @@ export const WorkflowSleuth = () => {
         // Extract mermaid code
         const mermaidMatch = msg.text.match(/```mermaid\n([\s\S]*?)```/);
         if (mermaidMatch && mermaidMatch[1]) {
-          const mermaidCode = mermaidMatch[1];
+          const mermaidCode = mermaidMatch[1].trim();
           
-          // Generate proper link
+          // Generate proper link with compression
           const properLink = mermaidLiveLink(mermaidCode);
           
-          // Replace old link if present
-          const updatedText = msg.text.replace(
-            /\*\*\[Open full-screen ↗\]\((.*?)\)\*\*/,
-            `**[Open full-screen ↗](${properLink})**`
-          );
+          // Replace placeholder link or create new one if none exists
+          const updatedText = msg.text.includes('[Open full-screen ↗]') 
+            ? msg.text.replace(
+                /\*\*\[Open full-screen ↗\]\((.*?)\)\*\*/,
+                `**[Open full-screen ↗](${properLink})**`
+              )
+            : msg.text.replace(
+                /```mermaid\n([\s\S]*?)```/,
+                `🗺️ Your workflow diagram is ready: **[Open full-screen ↗](${properLink})**\n\n*(zoom, edit, export in the Mermaid editor)*\n\n\`\`\`mermaid\n${mermaidCode}\n\`\`\``
+              );
           
           return { ...msg, text: updatedText };
         }

@@ -1,21 +1,16 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.0';
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Function signature kept for compatibility - actual link generation happens client-side
-function mermaidLiveLink(code: string): string {
-  // This function no longer generates the actual link, just returns a placeholder
-  // The client-side will handle the actual link generation with proper compression
-  return `https://mermaid.live/edit?code=${encodeURIComponent(code)}`;
-}
+// Function removed - link generation happens client-side
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -24,165 +19,166 @@ serve(async (req) => {
     const { workflowTitle } = await req.json();
     
     if (!workflowTitle) {
-      throw new Error('Workflow title is required');
-    }
-
-    console.log(`Generating visualization for workflow titled: "${workflowTitle}"`);
-
-    // Initialize Supabase client with service_role key for database access
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
-
-    // Query the workflows table
-    const { data: workflows, error } = await supabaseClient
-      .from('workflows')
-      .select('title, start_event, end_event, people, systems, pain_point')
-      .eq('title', workflowTitle)
-      .limit(1);
-
-    if (error) {
-      console.error('Database query error:', error);
-      throw new Error('Failed to fetch workflow data');
-    }
-
-    if (!workflows || workflows.length === 0) {
-      console.error(`Workflow with title "${workflowTitle}" not found`);
       return new Response(
-        JSON.stringify({ error: "Error: Workflow title not found." }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: "Workflow title is required" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
       );
     }
 
-    const workflow = workflows[0];
-    console.log("Retrieved workflow data:", JSON.stringify(workflow));
+    // Get database credentials from environment variables
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") || "https://jqrgqevteccqxnrmocuw.supabase.co";
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
     
-    // Transform data to expected format
-    const peopleArray = Array.isArray(workflow.people) ? workflow.people.map(person => {
-      // Assume all people are internal unless specified otherwise
-      return { name: person, type: "internal" };
-    }) : [];
-    
-    const systemsArray = Array.isArray(workflow.systems) ? workflow.systems.map(system => {
-      // Assume all systems are internal unless specified otherwise
-      return { name: system, type: "internal" };
-    }) : [];
-    
-    // Prepare the input for the diagram generator
-    const workflowData = {
-      title: workflow.title,
-      start_event: workflow.start_event,
-      end_event: workflow.end_event,
-      people: peopleArray,
-      systems: systemsArray,
-      pain_point: workflow.pain_point
-    };
-    
-    // Generate the mermaid diagram based on the structured specification
-    const mermaidChart = generateMermaidDiagram(workflowData);
-    
-    console.log("Generated Mermaid chart:", mermaidChart);
+    if (!supabaseServiceKey) {
+      console.error("No service role key found");
+      return new Response(
+        JSON.stringify({ error: "Missing service role key" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+      );
+    }
 
-    // Return just the raw chart data - client will handle link generation
+    // Initialize Supabase client
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    
+    // Fetch the workflow data
+    const { data: workflow, error: workflowError } = await supabase
+      .from('workflows')
+      .select('*')
+      .eq('title', workflowTitle)
+      .single();
+    
+    if (workflowError) {
+      console.error("Error fetching workflow:", workflowError);
+      return new Response(
+        JSON.stringify({ error: `Failed to fetch workflow: ${workflowError.message}` }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+      );
+    }
+    
+    if (!workflow) {
+      return new Response(
+        JSON.stringify({ error: "Workflow not found" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 404 }
+      );
+    }
+    
+    // Generate Mermaid chart from workflow data
+    const mermaidChart = generateMermaidFromWorkflow(workflow);
+    console.log("Generated mermaid chart:", mermaidChart);
+    
+    // Return JUST the raw chart data
     return new Response(
-      JSON.stringify({ 
-        mermaidCode: mermaidChart 
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ mermaidCode: mermaidChart }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
-
   } catch (error) {
-    console.error('Error in generate-workflow-mermaid function:', error);
+    console.error("Error in generate-workflow-mermaid:", error);
     return new Response(
       JSON.stringify({ error: error.message }),
-      { 
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      }
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
     );
   }
 });
 
-// Function to generate a mermaid diagram according to the specified rules
-function generateMermaidDiagram(data) {
+/**
+ * Generate a Mermaid flowchart from workflow data
+ */
+function generateMermaidFromWorkflow(workflow) {
   try {
-    // Sanitize text for mermaid compatibility
-    const sanitize = (text) => {
-      if (!text) return "Unspecified";
-      return text
-        .replace(/["\\<>]/g, '') // Remove problematic characters
-        .replace(/[\r\n\t]/g, ' ') // Replace line breaks and tabs with spaces
-        .trim();
-    };
+    // Extract workflow components
+    const { title, start_event, end_event, people = [], systems = [], pain_point } = workflow;
+
+    // Create basic flowchart structure
+    let mermaidCode = `flowchart TD\n`;
+    mermaidCode += `    title[${sanitizeMermaidText(title)}]\n\n`;
     
-    const title = sanitize(data.title);
-    const startEvent = sanitize(data.start_event);
-    const endEvent = sanitize(data.end_event);
-    const painPoint = sanitize(data.pain_point);
+    // Add start and end nodes
+    mermaidCode += `    start("🟢 ${sanitizeMermaidText(start_event)}")\n`;
+    mermaidCode += `    end("🏁 ${sanitizeMermaidText(end_event)}")\n\n`;
     
-    // Use a more compatible mermaid syntax - flowchart instead of graph TD
-    let diagram = `%% ${title}\nflowchart TD\n`;
+    // Add people and systems as participants
+    const actors = [];
     
-    // Start and end nodes - use standard arrow syntax
-    diagram += `  S(Start) --> `;
-    
-    // Initialize lastNodeId before using it
-    let lastNodeId = 'S';
-    
-    // Add people nodes
-    const people = data.people || [];
-    for (let i = 0; i < people.length; i++) {
-      const person = people[i];
-      const nodeId = `P${i + 1}`;
-      const className = person.type === 'external' ? 'externalPerson' : 'internalPerson';
-      const personName = sanitize(person.name);
-      
-      if (i === 0) {
-        // First person connects from start
-        diagram += `${nodeId}["${personName}"]:::${className}\n`;
-      } else {
-        // Connect from previous node
-        const prevNodeId = i === 0 ? 'S' : (people[i-1] ? `P${i}` : 'S');
-        diagram += `  ${prevNodeId} --> ${nodeId}["${personName}"]:::${className}\n`;
-      }
-      
-      // Update the last node ID
-      lastNodeId = nodeId;
+    if (people && people.length > 0) {
+      people.forEach((person, index) => {
+        const id = `person${index}`;
+        mermaidCode += `    ${id}["👤 ${sanitizeMermaidText(person)}"]\n`;
+        actors.push(id);
+      });
+      mermaidCode += `\n`;
     }
     
-    // Add system nodes
-    const systems = data.systems || [];
-    for (let i = 0; i < systems.length; i++) {
-      const system = systems[i];
-      const nodeId = `S${i + 1}`;
-      const className = system.type === 'external' ? 'externalSystem' : 'internalSystem';
-      const systemName = sanitize(system.name);
-      
-      diagram += `  ${lastNodeId} --> ${nodeId}["${systemName}"]:::${className}\n`;
-      lastNodeId = nodeId;
+    if (systems && systems.length > 0) {
+      systems.forEach((system, index) => {
+        const id = `system${index}`;
+        mermaidCode += `    ${id}["💻 ${sanitizeMermaidText(system)}"]\n`;
+        actors.push(id);
+      });
+      mermaidCode += `\n`;
     }
     
-    // Add pain point if available
-    if (painPoint && painPoint !== "Unspecified") {
-      diagram += `  ${lastNodeId} --> PP{{"⚠︎ ${painPoint}"}}:::pain\n`;
-      diagram += `  PP --> E(End)\n`;
-    } else {
-      // Connect last node to end
-      diagram += `  ${lastNodeId} --> E(End)\n`;
+    // Create a basic flow
+    mermaidCode += `    start --> `;
+    
+    // Connect actors in sequence if there are any
+    if (actors.length > 0) {
+      mermaidCode += actors.join(" --> ") + " --> ";
     }
     
-    // Add style classes
-    diagram += `  classDef internalPerson fill:#E0F7FA,stroke:#0288D1,stroke-width:2;\n`;
-    diagram += `  classDef externalPerson fill:#FFF3E0,stroke:#FB8C00,stroke-width:2,stroke-dasharray:5 5;\n`;
-    diagram += `  classDef internalSystem fill:#E8EAF6,stroke:#3F51B5,stroke-width:2;\n`;
-    diagram += `  classDef externalSystem fill:#EFEBE9,stroke:#8D6E63,stroke-width:2,stroke-dasharray:5 5;\n`;
-    diagram += `  classDef pain fill:#FFEBEE,stroke:#C62828,stroke-width:4,color:#C62828;\n`;
+    mermaidCode += "end\n\n";
     
-    return diagram;
+    // Add pain point as a note if it exists
+    if (pain_point) {
+      mermaidCode += `    pain[/"⚠️ Pain Point: ${sanitizeMermaidText(pain_point)}"/]\n`;
+      mermaidCode += `    pain -.-> end\n`;
+    }
+    
+    // Add styling
+    mermaidCode += `\n    classDef start fill:#dfd,stroke:#393,stroke-width:1px\n`;
+    mermaidCode += `    classDef end fill:#fdd,stroke:#933,stroke-width:1px\n`;
+    mermaidCode += `    classDef pain fill:#ffeecc,stroke:#f90,stroke-width:1px,stroke-dasharray: 5 5\n`;
+    mermaidCode += `    classDef person fill:#eff,stroke:#699,stroke-width:1px\n`;
+    mermaidCode += `    classDef system fill:#fef,stroke:#969,stroke-width:1px\n\n`;
+    
+    mermaidCode += `    class start start\n`;
+    mermaidCode += `    class end end\n`;
+    
+    if (pain_point) {
+      mermaidCode += `    class pain pain\n`;
+    }
+    
+    // Apply person class to all person nodes
+    if (people && people.length > 0) {
+      people.forEach((_, index) => {
+        mermaidCode += `    class person${index} person\n`;
+      });
+    }
+    
+    // Apply system class to all system nodes
+    if (systems && systems.length > 0) {
+      systems.forEach((_, index) => {
+        mermaidCode += `    class system${index} system\n`;
+      });
+    }
+
+    return mermaidCode;
   } catch (error) {
-    console.error("Error generating Mermaid diagram:", error);
-    // Return a simple fallback diagram in case of errors
-    return `flowchart TD\n  A[Error: Could not generate diagram] --> B[Please try again]`;
+    console.error("Error generating Mermaid chart:", error);
+    return `flowchart TD\n    error["Error generating chart: ${error.message}"]\n`;
   }
+}
+
+/**
+ * Sanitize text for Mermaid compatibility
+ * Escapes special characters that could break the Mermaid syntax
+ */
+function sanitizeMermaidText(text) {
+  if (!text) return "";
+  
+  // Replace quotes with HTML entities
+  return text
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
 }

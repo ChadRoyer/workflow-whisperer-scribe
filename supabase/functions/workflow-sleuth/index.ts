@@ -100,11 +100,11 @@ serve(async (req) => {
           throw new Error(visualData.error);
         }
 
-        // Get the raw code - we'll generate the link on the client side
+        // Get the raw code - the client will generate the link
         const mermaidCode = visualData.mermaidCode || "";
         
-        // Create a message with the embedded code
-        const linkMessage = `🗺️ Your workflow diagram is ready: **[Open full-screen ↗](placeholder-will-be-replaced-client-side)**\n\n*(zoom, edit, export in the Mermaid editor)*\n\n\`\`\`mermaid\n${mermaidCode}\n\`\`\``;
+        // Create a message with just the mermaid code - client will handle link generation
+        const linkMessage = `\`\`\`mermaid\n${mermaidCode}\n\`\`\``;
         
         // Save the link message to chat messages
         const { data: messageData, error: messageError } = await supabase
@@ -235,11 +235,11 @@ serve(async (req) => {
             throw new Error(visualData.error);
           }
           
-          // Get the raw code - we'll generate the link on the client side
+          // Get the raw code - the client will generate the link
           const mermaidCode = visualData.mermaidCode || "";
           
-          // Create a message with the embedded code
-          const linkMessage = `🗺️ Your workflow diagram is ready: **[Open full-screen ↗](placeholder-will-be-replaced-client-side)**\n\n*(zoom, edit, export in the Mermaid editor)*\n\n\`\`\`mermaid\n${mermaidCode}\n\`\`\``;
+          // Create a message with just the mermaid code - client will handle link generation
+          const linkMessage = `\`\`\`mermaid\n${mermaidCode}\n\`\`\``;
         
           // Save the link message to chat messages
           const { data: messageData, error: messageError } = await supabase
