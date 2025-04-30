@@ -111,25 +111,20 @@ export const WorkflowSleuth = () => {
     for (const m of msgs) {
       // Only process bot messages that contain mermaid code blocks
       if (m.isBot && m.text && m.text.includes('```mermaid')) {
-        // Extract inner mermaid code with a more robust regex
+        // find inner code between the fences
         const mermaidMatch = m.text.match(/```mermaid[^\n]*\n([\s\S]*?)```/i);
         
-        if (mermaidMatch && mermaidMatch[1]) {
-          try {
-            // Generate proper link with compression
-            const link = mermaidLiveLink(mermaidMatch[1]); // Use inner captured code
-            
-            // Create a new message with the formatted text
-            newMessages.push({
-              ...m,
-              text: `🗺️ Your workflow diagram is ready: **[Open full-screen ↗](${link})**\n\n*(zoom, edit, export in Mermaid-Live)*`
-            });
-            
-            continue; // Skip adding the original message
-          } catch (error) {
-            console.error("Error processing mermaid diagram:", error);
-            // If an error occurs, fall through to add the original message
-          }
+        if (mermaidMatch) {
+          const link = mermaidLiveLink(mermaidMatch[1]); // <-- use inner capture
+          
+          newMessages.push({
+            ...m,
+            text: "🗺️ Your workflow diagram is ready: " +
+              `**[Open full-screen ↗](${link})**` +
+              "\n\n*(zoom, edit, export in Mermaid-Live)*"
+          });
+          
+          continue; // DO NOT push the original message
         }
       }
       // Add the original message for non-mermaid messages or if processing failed
