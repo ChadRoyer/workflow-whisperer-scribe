@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState } from 'react';
 import mermaid from 'mermaid';
 import { Card, CardContent } from "@/components/ui/card";
@@ -8,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Zap, RefreshCw, AlertCircle, ExternalLink, Code } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
+import { mermaidLiveLink } from "../utils/mermaidLiveLink";
 
 interface MermaidChartProps {
   chart: string;
@@ -59,15 +59,10 @@ const MermaidChart: React.FC<MermaidChartProps> = ({ chart, workflowId, workflow
     }
   }, []);
 
-  // Create an external link directly when rendering fails
+  // Create an external link using the utility function
   const createExternalLink = () => {
-    try {
-      // Use a direct approach that doesn't require complex encoding
-      return `https://mermaid.live/edit?code=${encodeURIComponent(chart)}`;
-    } catch (error) {
-      console.error('Error creating external link:', error);
-      return `https://mermaid.live/edit`;
-    }
+    // Use the imported helper function
+    return mermaidLiveLink(chart);
   };
 
   useEffect(() => {

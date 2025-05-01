@@ -1,4 +1,3 @@
-
 import pako from "pako";
 import { Buffer } from "buffer";
 
@@ -15,7 +14,10 @@ export function mermaidLiveLink(raw: string): string {
     mermaid: { theme: "default" }   // you can omit or set other options
   });
 
-  const deflated = pako.deflate(json, { level: 9 });
+  // Explicitly encode the JSON string to Uint8Array before deflating
+  const data = new TextEncoder().encode(json);
+  const deflated = pako.deflate(data, { level: 9 });
+
   const b64url = Buffer.from(deflated)
     .toString("base64")
     .replace(/\+/g, "-")
